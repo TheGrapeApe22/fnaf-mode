@@ -22,9 +22,12 @@ def run(argv, **kwargs):
 
 def asset_root():
     config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
-    custom = config.get('assetDirectory', '')
+    assets = config.get('assets', {})
+    if not isinstance(assets, dict):
+        raise ValueError('assets must be a JSON object')
+    custom = assets.get('directory', config.get('assetDirectory', ''))
     if not isinstance(custom, str) or (custom and not custom.startswith(('/', '~/'))):
-        raise ValueError('assetDirectory must be an absolute path or start with ~/')
+        raise ValueError('assets.directory must be an absolute path or start with ~/')
     return Path(custom).expanduser() if custom else DATA / 'fnaf-mode/assets'
 
 
@@ -55,7 +58,7 @@ def import_gif(source, name, fps):
             raise ValueError('No frames decoded')
         # Rename within the same filesystem so the shell never sees partial output.
         Path(tmp).rename(target)
-    print(f'Imported {target}; set animationFps to {fps} in {CONFIG}')
+    print(f'Imported {target}; set visuals.animationFps to {fps} in {CONFIG}')
 
 
 def main():

@@ -4,9 +4,9 @@ A GNOME Shell 50 extension for Ubuntu 26.04 / Wayland. `fnaf-mode` toggles a
 click-through overlay on the primary screen, including over fullscreen apps.
 Your apps retain keyboard focus and mouse input.
 
-Every **5–50 seconds of normal desktop time**, it runs a **2–4 second** event:
-white flash → dark flicker → random still/looping frame animation → black → fade
-back to desktop. A different visual is chosen each time when at least two exist.
+With the current repository config, every **2 seconds of normal desktop time**,
+it runs a **4-second** event: white flash → dark flicker → random still/looping
+frame animation with repeated flicker bursts → black → fade back to desktop. A different visual is chosen each time when at least two exist.
 One or two of your own MP3s start together and fade in/out. No images, GIFs,
 sounds, or downloads are bundled. Nothing controls physical lights or brightness.
 
@@ -65,7 +65,7 @@ installation, add/edit files directly in the installed library:
 ```
 
 Each still and each animation subfolder counts as one visual. Frames are sorted
-naturally by filename and loop at `animationFps`. PNG, JPEG and WebP are supported.
+naturally by filename and loop at `visuals.animationFps`. PNG, JPEG and WebP are supported.
 Use reasonably sized frames (roughly your screen resolution) and short animations;
 these are rendered inside GNOME Shell. Images are centered and fitted without
 cropping. Transparent images reveal your desktop; opaque images cover it.
@@ -77,7 +77,7 @@ GIFs must be converted to frame folders:
 
 ```sh
 fnaf-mode import-gif ~/Downloads/mangle.gif mangle-jumpscare
-# Optional rate (also set animationFps to the same value):
+# Optional rate (also set visuals.animationFps to the same value):
 fnaf-mode import-gif ~/Downloads/another.gif another-jumpscare --fps 20
 ```
 
@@ -87,7 +87,7 @@ resampled to the selected fixed frame rate. Frames become visible to the extensi
 only after conversion completes. Direct GIF playback is not used.
 
 Each event chooses one or two distinct MP3s from `sounds/`. Supply at least two
-for simultaneous playback. Prefer tracks at least as long as `eventMaxSeconds` so
+for simultaneous playback. Prefer tracks at least as long as `timing.eventMaxSeconds` so
 the fade-out happens during audible content. Shorter tracks are padded with
 silence; longer tracks are faded and cut to the event duration. Volume is per
 track, so two tracks together can be louder. No sound changes system volume.
@@ -103,25 +103,36 @@ Edit this repository's [`config.json`](config.json), then run `./deploy.sh` to
 overwrite `~/.config/fnaf-mode/config.json`. You can also edit the installed file
 directly for immediate changes, but the next deployment replaces it. Key settings:
 
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `intervalMinSeconds`, `intervalMaxSeconds` | 5, 50 | Random normal time between events |
-| `eventMinSeconds`, `eventMaxSeconds` | 2, 4 | Total event time, including all fades |
-| `flashSeconds`, `flashOpacity` | 0.12, 180 | Opening white flash; opacity 0–255 |
-| `flickerSeconds`, `flickerStepMs` | 0.45, 90 | Dark flicker duration and update interval |
-| `blackoutSeconds`, `fadeBackSeconds` | 0.2, 0.65 | Black screen, then return to desktop |
-| `imageOpacity`, `animationFps` | 255, 12 | Visual opacity and frame rate (1–30) |
-| `soundEnabled` | true | Allow audio |
-| `soundMinTracks`, `soundMaxTracks` | 1, 2 | Number of distinct MP3s (1–2) |
-| `soundVolume` | 45 | Per-track mpv volume (0–100) |
-| `soundFadeInSeconds`, `soundFadeOutSeconds` | 0.3, 0.65 | Audio fades |
-| `assetDirectory` | `""` | Default media root; or absolute path / `~/...` |
+The file has four sections: `timing`, `visuals`, `audio`, and `assets`.
 
-The config and media are re-read between events; no deployment is needed for
-changes. Toggle off/on to immediately start a new wait using edited timing.
-An invalid config logs an error and retains the last good values. Missing keys use
-defaults. If you shorten events, transition phases scale down to leave time for
-the image. Set `flashOpacity` to 0 to suppress the white flash.
+| Setting | Meaning |
+| --- | --- |
+| `timing.intervalMinSeconds`, `intervalMaxSeconds` | Random normal time between events |
+| `timing.eventMinSeconds`, `eventMaxSeconds` | Total event time, including all fades |
+| `visuals.flashSeconds`, `flashOpacity` | Opening white flash duration and opacity (0–255) |
+| `visuals.flickerSeconds`, `flickerStepMs` | Opening flicker duration and darkness update interval |
+| `visuals.flickerGapMinSeconds`, `flickerGapMaxSeconds` | Random clear gaps between repeated flicker bursts |
+| `visuals.flickerBurstMinSeconds`, `flickerBurstMaxSeconds` | Duration of each repeated flicker burst |
+| `visuals.blackoutSeconds`, `fadeBackSeconds` | Black screen, then return to desktop |
+| `visuals.imageOpacity`, `animationFps` | Visual opacity (0–255) and frame rate (1–30) |
+| `audio.enabled` | Allow audio |
+| `audio.minTracks`, `maxTracks` | Number of distinct MP3s (1–2) |
+| `audio.volume` | Per-track mpv volume (0–100) |
+| `audio.fadeInSeconds`, `fadeOutSeconds` | Audio fades |
+| `assets.directory` | Empty string for default media root, or an absolute path / `~/...` |
+
+Repeated dark flicker bursts continue throughout the image phase. Reduce the gap
+settings for more frequent flickers; increase the burst settings for longer ones.
+The final blackout and fade back remain smooth.
+
+The installed config and media are re-read between events. Changes made directly
+to the installed config take effect without deployment; edits to the repository
+config require `./deploy.sh`. Toggle off/on to immediately start a new wait using
+edited timing. Invalid config logs an error and retains the last good values.
+Missing keys use defaults (5–50 seconds between events, 2–4 seconds per event).
+Old flat configs still load. If you shorten events, transition phases scale down
+to leave time for the image. Set `visuals.flashOpacity` to 0 to suppress the white
+flash.
 
 XDG_CONFIG_HOME and XDG_DATA_HOME are respected; the paths above are defaults.
 GNOME must share those environment settings with your terminal.

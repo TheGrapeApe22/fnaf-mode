@@ -6,6 +6,8 @@ export const DEFAULTS = Object.freeze({
     eventMinSeconds: 2, eventMaxSeconds: 4,
     flashSeconds: 0.12, flashOpacity: 180,
     flickerSeconds: 0.45, flickerStepMs: 90,
+    flickerGapMinSeconds: 0.12, flickerGapMaxSeconds: 0.3,
+    flickerBurstMinSeconds: 0.12, flickerBurstMaxSeconds: 0.28,
     blackoutSeconds: 0.2, fadeBackSeconds: 0.65,
     imageOpacity: 255, animationFps: 12,
     soundEnabled: true, soundMinTracks: 1, soundMaxTracks: 2,
@@ -16,13 +18,25 @@ export const DEFAULTS = Object.freeze({
 export function normalizeConfig(raw = {}) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw))
         throw new Error('Config must be a JSON object');
+    for (const section of ['timing', 'visuals', 'audio', 'assets']) {
+        if (section in raw && (!raw[section] || typeof raw[section] !== 'object' || Array.isArray(raw[section])))
+            throw new Error(`${section} must be a JSON object`);
+    }
+    // Accept old flat configs during migration; grouped settings take precedence.
+    const input = {...raw, ...raw.timing, ...raw.visuals};
+    for (const key of ['enabled', 'minTracks', 'maxTracks', 'volume', 'fadeInSeconds', 'fadeOutSeconds']) {
+        if (raw.audio && key in raw.audio)
+            input[`sound${key[0].toUpperCase()}${key.slice(1)}`] = raw.audio[key];
+    }
+    if (raw.assets && 'directory' in raw.assets)
+        input.assetDirectory = raw.assets.directory;
     const c = {...DEFAULTS};
     for (const [key, value] of Object.entries(DEFAULTS)) {
         if (typeof value === 'number') {
-            if (typeof raw[key] === 'number' && Number.isFinite(raw[key]))
-                c[key] = Math.max(0, raw[key]);
-        } else if (typeof raw[key] === typeof value)
-            c[key] = raw[key];
+            if (typeof input[key] === 'number' && Number.isFinite(input[key]))
+                c[key] = Math.max(0, input[key]);
+        } else if (typeof input[key] === typeof value)
+            c[key] = input[key];
     }
     for (const prefix of ['interval', 'event']) {
         c[`${prefix}MinSeconds`] = Math.max(0.5, c[`${prefix}MinSeconds`]);
@@ -31,13 +45,17 @@ export function normalizeConfig(raw = {}) {
     // Bound resource usage and retain some time for the image itself.
     c.animationFps = Math.min(30, Math.max(1, c.animationFps));
     c.flickerStepMs = Math.max(50, c.flickerStepMs);
+    for (const kind of ['Gap', 'Burst']) {
+        c[`flicker${kind}MinSeconds`] = Math.max(0.05, c[`flicker${kind}MinSeconds`]);
+        c[`flicker${kind}MaxSeconds`] = Math.max(c[`flicker${kind}MinSeconds`], c[`flicker${kind}MaxSeconds`]);
+    }
     c.flashOpacity = Math.min(255, c.flashOpacity);
     c.imageOpacity = Math.min(255, c.imageOpacity);
     c.soundVolume = Math.min(100, c.soundVolume);
     c.soundMinTracks = Math.min(2, Math.max(1, Math.floor(c.soundMinTracks)));
     c.soundMaxTracks = Math.min(2, Math.max(c.soundMinTracks, Math.floor(c.soundMaxTracks)));
     if (c.assetDirectory && !c.assetDirectory.startsWith('/') && !c.assetDirectory.startsWith('~/'))
-        throw new Error('assetDirectory must be an absolute path or start with ~/');
+        throw new Error('assets.directory must be an absolute path or start with ~/');
     return c;
 }
 

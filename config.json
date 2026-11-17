@@ -1,21 +1,33 @@
 {
-  "intervalMinSeconds": 2,
-  "intervalMaxSeconds": 2,
-  "eventMinSeconds": 4,
-  "eventMaxSeconds": 4,
-  "flashSeconds": 0.12,
-  "flashOpacity": 180,
-  "flickerSeconds": 0.45,
-  "flickerStepMs": 90,
-  "blackoutSeconds": 0.2,
-  "fadeBackSeconds": 0.65,
-  "imageOpacity": 255,
-  "animationFps": 12,
-  "soundEnabled": true,
-  "soundMinTracks": 1,
-  "soundMaxTracks": 2,
-  "soundVolume": 45,
-  "soundFadeInSeconds": 0.3,
-  "soundFadeOutSeconds": 0.65,
-  "assetDirectory": ""
+  "timing": {
+    "intervalMinSeconds": 2,
+    "intervalMaxSeconds": 2,
+    "eventMinSeconds": 4,
+    "eventMaxSeconds": 4
+  },
+  "visuals": {
+    "flashSeconds": 0.12,
+    "flashOpacity": 180,
+    "flickerSeconds": 0.45,
+    "flickerStepMs": 90,
+    "blackoutSeconds": 0.2,
+    "fadeBackSeconds": 0.65,
+    "imageOpacity": 255,
+    "animationFps": 12,
+    "flickerGapMinSeconds": 0.12,
+    "flickerGapMaxSeconds": 0.3,
+    "flickerBurstMinSeconds": 0.12,
+    "flickerBurstMaxSeconds": 0.28
+  },
+  "audio": {
+    "enabled": true,
+    "minTracks": 1,
+    "maxTracks": 2,
+    "volume": 45,
+    "fadeInSeconds": 0.3,
+    "fadeOutSeconds": 0.65
+  },
+  "assets": {
+    "directory": ""
+  }
 }

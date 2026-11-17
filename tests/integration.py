@@ -35,6 +35,10 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     assert config.read_bytes() == (ROOT / 'config.json').read_bytes()
     assert (assets / 'images/keep.png').read_bytes() == b'personal media'
     print('PASS: isolated deployment, CLI paths, config overwrite, media preservation')
+    custom_assets = home / 'custom media'
+    config.write_text(json.dumps({'assets': {'directory': str(custom_assets)}}))
+    assert run([command, 'assets'], env).stdout.strip() == str(custom_assets)
+    shutil.copyfile(ROOT / 'config.json', config)
 
     ffmpeg, mpv = shutil.which('ffmpeg'), shutil.which('mpv')
     if not ffmpeg or not mpv:
@@ -65,9 +69,9 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     run([ffmpeg, '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=4',
          assets / 'sounds/a.mp3'])
     shutil.copyfile(assets / 'sounds/a.mp3', assets / 'sounds/b.mp3')
-    config.write_text(json.dumps({'intervalMinSeconds': 0.5, 'intervalMaxSeconds': 0.5,
-                                 'eventMinSeconds': 2, 'eventMaxSeconds': 2,
-                                 'soundMinTracks': 2, 'soundMaxTracks': 2}))
+    config.write_text(json.dumps({'timing': {'intervalMinSeconds': 0.5, 'intervalMaxSeconds': 0.5,
+                                           'eventMinSeconds': 2, 'eventMaxSeconds': 2},
+                                 'audio': {'minTracks': 2, 'maxTracks': 2}}))
     # Load the actual extension with just compositor-specific imports substituted.
     module = (ROOT / 'extension/extension.js').read_text()
     module = module.replace("import Clutter from 'gi://Clutter';", '')

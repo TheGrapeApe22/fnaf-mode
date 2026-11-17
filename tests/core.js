@@ -23,6 +23,17 @@ function remove(file) {
 
 const root = GLib.dir_make_tmp('fnaf-test-XXXXXX');
 try {
+    const grouped = normalizeConfig({timing: {intervalMinSeconds: 7, eventMaxSeconds: 6},
+        visuals: {flashOpacity: 100, flickerGapMinSeconds: 0.4, flickerGapMaxSeconds: 0.1},
+        audio: {enabled: false, maxTracks: 1, volume: 20}, assets: {directory: '~/scares'}});
+    assert(grouped.intervalMinSeconds === 7 && grouped.eventMaxSeconds === 6 &&
+        grouped.flashOpacity === 100 && grouped.soundVolume === 20 &&
+        !grouped.soundEnabled && grouped.soundMaxTracks === 1 && grouped.assetDirectory === '~/scares',
+    'Grouped config loads timing, visuals, audio and assets');
+    assert(grouped.flickerGapMaxSeconds === 0.4, 'Burst gap bounds');
+    let badSection = false;
+    try { normalizeConfig({visuals: null}); } catch (_) { badSection = true; }
+    assert(badSection, 'Invalid config sections rejected');
     const c = normalizeConfig({intervalMinSeconds: 9, intervalMaxSeconds: 2,
         animationFps: 999, soundMinTracks: 2, soundMaxTracks: 1,
         fadeBackSeconds: Infinity, flashOpacity: -20});

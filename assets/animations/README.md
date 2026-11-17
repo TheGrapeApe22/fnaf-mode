@@ -5,6 +5,6 @@ mangle-jumpscare/
   frame-00002.png
   ...
 
-Frames sort naturally by filename and loop at animationFps (default 12).
+Frames sort naturally by filename and loop at visuals.animationFps (default 12).
 Hidden folders are ignored. Keep images at reasonable sizes; the shell renders them.
 For GIFs use: fnaf-mode import-gif /path/to/jumpscare.gif mangle-jumpscare

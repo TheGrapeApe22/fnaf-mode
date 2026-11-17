@@ -115,7 +115,18 @@ export default class FnafMode extends Extension {
         const started = GLib.get_monotonic_time();
         let lastFrame = -1;
         let lastFlicker = -1;
+        let burstStart = phases.flickerEnd + randomBetween(c.flickerGapMinSeconds, c.flickerGapMaxSeconds);
+        let burstEnd = burstStart + randomBetween(c.flickerBurstMinSeconds, c.flickerBurstMaxSeconds);
         let fadeStarted = false;
+        const flicker = elapsed => {
+            const step = Math.floor(elapsed * 1000 / c.flickerStepMs);
+            if (step !== lastFlicker) {
+                this._image.opacity = Math.random() < 0.3 ? 0 : c.imageOpacity;
+                this._light.set_style('background-color: black;');
+                this._light.opacity = Math.floor(randomBetween(60, 230));
+                lastFlicker = step;
+            }
+        };
         const tick = () => {
             const elapsed = (GLib.get_monotonic_time() - started) / 1000000;
             if (elapsed >= phases.end) {
@@ -135,16 +146,19 @@ export default class FnafMode extends Extension {
                 this._light.set_style('background-color: white;');
                 this._light.opacity = c.flashOpacity;
             } else if (elapsed < phases.flickerEnd) {
-                const step = Math.floor(elapsed * 1000 / c.flickerStepMs);
-                if (step !== lastFlicker) {
-                    this._image.opacity = Math.random() < 0.3 ? 0 : c.imageOpacity;
-                    this._light.set_style('background-color: black;');
-                    this._light.opacity = Math.floor(randomBetween(60, 230));
-                    lastFlicker = step;
-                }
+                flicker(elapsed);
             } else if (elapsed < phases.imageEnd) {
-                this._image.opacity = c.imageOpacity;
-                this._light.opacity = 0;
+                if (elapsed >= burstEnd) {
+                    burstStart = elapsed + randomBetween(c.flickerGapMinSeconds, c.flickerGapMaxSeconds);
+                    burstEnd = burstStart + randomBetween(c.flickerBurstMinSeconds, c.flickerBurstMaxSeconds);
+                }
+                if (elapsed >= burstStart) {
+                    flicker(elapsed);
+                } else {
+                    this._image.opacity = c.imageOpacity;
+                    this._light.opacity = 0;
+                    lastFlicker = -1;
+                }
             } else if (!fadeStarted) {
                 this._image.opacity = 0;
                 this._light.set_style('background-color: black;');
