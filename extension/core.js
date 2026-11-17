@@ -3,6 +3,7 @@ import GLib from 'gi://GLib';
 
 export const DEFAULTS = Object.freeze({
     initialWaitSeconds: 5,
+    jumpscareFirst: false,
     intervalMinSeconds: 5, intervalMaxSeconds: 50,
     eventMinSeconds: 2, eventMaxSeconds: 4,
     flashSeconds: 0.12, flashOpacity: 180,
@@ -73,8 +74,10 @@ export function randomBetween(min, max) {
     return min + Math.random() * (max - min);
 }
 
-export function choose(items, previous = null) {
-    const candidates = items.length > 1 ? items.filter(item => item.id !== previous) : items;
+export function choose(items, previous = null, animationOnly = false) {
+    let candidates = animationOnly ? items.filter(item => item.type === 'animation') : items;
+    if (candidates.length > 1)
+        candidates = candidates.filter(item => item.id !== previous);
     return candidates[Math.floor(Math.random() * candidates.length)] ?? null;
 }
 

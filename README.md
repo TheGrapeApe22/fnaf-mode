@@ -9,6 +9,10 @@ Events alternate with normal desktop time, controlled by `timing` in `config.jso
 or resuming from a locked session (default 5 seconds; 0 starts immediately).
 It replaces the first interval rather than adding to it. Later events use
 `intervalMinSeconds` / `intervalMaxSeconds` after the previous event finishes.
+Set `timing.jumpscareFirst` to `true` to force the first event after activation or
+resume to be an animation. Later events choose normally from images and animations.
+If no animation is available, it waits for animation frames rather than showing
+an image. The initial wait still applies.
 Still-image duration is also configurable; animations play once at
 `visuals.animationFps`, then go black and fade back to desktop. Opening flashes
 and repeated flicker bursts overlay the images. A different visual is chosen each
@@ -210,6 +214,7 @@ The file has four sections: `timing`, `visuals`, `audio`, and `assets`.
 | Setting | Meaning |
 | --- | --- |
 | `timing.initialWaitSeconds` | Wait before the first event after activation/resume (default 5 seconds) |
+| `timing.jumpscareFirst` | Force the first event to be an animation (default false) |
 | `timing.intervalMinSeconds`, `intervalMaxSeconds` | Random normal time between events |
 | `timing.eventMinSeconds`, `eventMaxSeconds` | Still-image event time, including all fades |
 | `visuals.flashSeconds`, `flashOpacity` | Opening white flash duration and opacity (0–255) |

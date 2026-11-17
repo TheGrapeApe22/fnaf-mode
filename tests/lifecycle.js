@@ -81,6 +81,15 @@ settings.set_boolean('active', true);
 spin(950);
 assert(settings.active && extension._players.size === 2,
     'Malformed mapping during an edit retains the last valid mapping and keeps mode active');
+extension._config = () => ({...savedConfig, initialWaitSeconds: 0, jumpscareFirst: true});
+extension._previousVisual = `${savedConfig.assetDirectory}/animations/converted-right`;
+settings.set_boolean('active', true);
+spin(150);
+assert(extension._previousVisual.endsWith('/converted-right') && !extension._firstEvent,
+    'Activation forces an animation even if it was the previous visual');
+spin(2550);
+assert(extension._previousVisual.endsWith('/plain.png') && extension._players.size === 2,
+    'Following events return to normal mixed selection');
 extension.disable();
 assert(!settings.handlers.size && !sessionMode.handlers.size && !layoutManager.handlers.size &&
     !extension._sources.size, 'Disable disconnects signals and removes timers');

@@ -25,6 +25,15 @@ function remove(file) {
 const root = GLib.dir_make_tmp('fnaf-test-XXXXXX');
 try {
     assert(normalizeConfig().initialWaitSeconds === 5, 'Default initial wait is five seconds');
+    assert(normalizeConfig().jumpscareFirst === false &&
+        normalizeConfig({timing: {jumpscareFirst: true}}).jumpscareFirst === true,
+        'Jumpscare-first setting defaults off and accepts a boolean');
+    const mixed = [{id: 'still', type: 'image'}, {id: 'scare', type: 'animation'}];
+    for (let i = 0; i < 20; i++)
+        assert(choose(mixed, null, true).id === 'scare', 'First-event selection excludes still images');
+    assert(choose(mixed, 'scare', true).id === 'scare',
+        'Only available animation can repeat across activations');
+    assert(choose([mixed[0]], null, true) === null, 'No animation means wait instead of showing an image');
     assert(normalizeConfig({timing: {initialWaitSeconds: 0}}).initialWaitSeconds === 0,
         'Initial wait can be disabled');
     assert(normalizeConfig({timing: {initialWaitSeconds: -1}}).initialWaitSeconds === 0,

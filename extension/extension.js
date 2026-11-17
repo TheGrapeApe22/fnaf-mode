@@ -54,6 +54,7 @@ export default class FnafMode extends Extension {
 
     _sync() {
         this._clear();
+        this._firstEvent = true;
         if (this._settings.get_boolean('active') && !Main.sessionMode.isLocked &&
             !Main.sessionMode.isGreeter && Main.layoutManager.primaryMonitor)
             this._schedule(true);
@@ -95,10 +96,13 @@ export default class FnafMode extends Extension {
         const assets = scanAssets(root, links);
         for (const warning of assets.warnings)
             console.warn(`[FNAF Mode] ${warning}`);
-        const visual = choose(assets.visuals, this._previousVisual);
+        const animationOnly = this._firstEvent && c.jumpscareFirst;
+        const visual = choose(assets.visuals, this._previousVisual, animationOnly);
         if (!visual) {
             if (!this._warnedEmpty) {
-                console.warn(`[FNAF Mode] Add images or animation frames to ${root}; waiting for assets.`);
+                console.warn(animationOnly
+                    ? `[FNAF Mode] jumpscareFirst requires an animation in ${root}/animations; waiting for frames.`
+                    : `[FNAF Mode] Add images or animation frames to ${root}; waiting for assets.`);
                 this._warnedEmpty = true;
             }
             this._schedule();
@@ -109,6 +113,7 @@ export default class FnafMode extends Extension {
         const monitor = Main.layoutManager.primaryMonitor;
         if (!monitor)
             return;
+        this._firstEvent = false;
         this._overlay = new St.Widget({reactive: false, can_focus: false,
             x: monitor.x, y: monitor.y, width: monitor.width, height: monitor.height,
             clip_to_allocation: true});
