@@ -1,7 +1,7 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import {DEFAULTS, normalizeConfig, readConfig, scanAssets, choose, timeline,
-    imageAlignment, imageGeometry} from '../extension/core.js';
+    animationTimeline, frameIndex, imageAlignment, imageGeometry} from '../extension/core.js';
 
 function assert(value, message) {
     if (!value)
@@ -66,6 +66,18 @@ try {
             t.imageEnd <= t.blackoutEnd && t.blackoutEnd <= t.end, 'Phase order');
         assert(t.end === duration, 'Whole event fits requested duration');
     }
+    const animation = {frames: Array(24)};
+    const animationConfig = normalizeConfig({eventMinSeconds: 90, eventMaxSeconds: 90});
+    const phases = animationTimeline(animationConfig, animation.frames.length);
+    assert(Math.abs(phases.imageEnd - phases.imageStart - 2) < 0.0001,
+        'Animation runs for frame count / FPS, independent of still-image event duration');
+    assert(frameIndex(animation, animationConfig, phases, phases.imageStart) === 0 &&
+        frameIndex(animation, animationConfig, phases, phases.imageEnd - 0.001) === 23 &&
+        frameIndex(animation, animationConfig, phases, phases.end + 10) === 23,
+    'First and last frames have their own interval; animation never wraps');
+    const single = animationTimeline(animationConfig, 1);
+    assert(Math.abs(single.imageEnd - single.imageStart - 1 / 12) < 0.0001,
+        'A one-frame animation is still an animation');
     write(`${root}/images/a.png`);
     write(`${root}/images/b.JPG`);
     write(`${root}/images/readme.md`);
@@ -77,6 +89,22 @@ try {
     const assets = scanAssets(root);
     assert(assets.visuals.length === 3 && assets.sounds.length === 2, 'Asset discovery');
     assert(assets.visuals[2].frames[0].endsWith('frame-2.png'), 'Natural frame order');
+    write(`${root}/animations/z-bundle/frames/frame-10.gif`);
+    write(`${root}/animations/z-bundle/frames/frame-2.png`);
+    write(`${root}/animations/z-bundle/old-root-frame.png`);
+    write(`${root}/animations/z-bundle/another.mp3`);
+    write(`${root}/animations/z-bundle/audio.mp3`);
+    write(`${root}/animations/zz-named/frames/001.gif`);
+    write(`${root}/animations/zz-named/FNAF 2 Jumpscare Sound.mp3`);
+    const bundled = scanAssets(root).visuals;
+    const bundle = bundled.find(v => v.id.endsWith('/z-bundle'));
+    const named = bundled.find(v => v.id.endsWith('/zz-named'));
+    assert(bundle.type === 'animation' && bundle.frames.length === 2 &&
+        bundle.frames[0].endsWith('/frames/frame-2.png') && bundle.audio.endsWith('/audio.mp3'),
+    'Nested frames, GIF support, natural order, canonical audio preference and no root duplicates');
+    assert(named.audio.endsWith('/FNAF 2 Jumpscare Sound.mp3'), 'Descriptive MP3 names supported');
+    assert(assets.visuals[2].audio === null && assets.visuals[0].type === 'image',
+        'Legacy animation folders and still images retain global sound fallback');
     assert(choose([], null) === null, 'Empty library');
     for (let i = 0; i < 50; i++)
         assert(choose(assets.visuals, assets.visuals[0].id).id !== assets.visuals[0].id, 'No repeat');

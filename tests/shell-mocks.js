@@ -18,7 +18,11 @@ class Widget {
     add_child(child) { this.children.push(child); }
     set_size(width, height) { Object.assign(this, {width, height}); }
     set_position(x, y) { Object.assign(this, {x, y}); }
-    set_style(style) { this.style = style; }
+    set_style(style) {
+        this.style = style;
+        this.styleHistory ??= [];
+        this.styleHistory.push(style);
+    }
     ease(props) { this.opacity = props.opacity; }
     destroy() { this.destroyed = true; }
 }
@@ -37,7 +41,7 @@ export const layoutManager = Object.assign(new Signals(), {
         if (actor.children.some(c => c.reactive || c.can_focus))
             throw new Error('Children must not intercept input');
         this.actors.add(actor);
-        this.events.push({kind: 'start', time: GLib.get_monotonic_time() / 1000000});
+        this.events.push({kind: 'start', time: GLib.get_monotonic_time() / 1000000, actor});
     },
     removeChrome(actor) {
         this.actors.delete(actor);

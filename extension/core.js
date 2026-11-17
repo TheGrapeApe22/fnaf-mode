@@ -77,7 +77,7 @@ export function choose(items, previous = null) {
 }
 
 export function imageAlignment(filename, fallback = {x: 0.5, y: 0.5}) {
-    const name = GLib.path_get_basename(filename).replace(/\.(png|jpe?g|webp)$/i, '').toLowerCase();
+    const name = GLib.path_get_basename(filename).replace(/\.(png|jpe?g|webp|gif)$/i, '').toLowerCase();
     const alignment = /cent(?:er|re)/.test(name) ? {x: 0.5, y: 0.5} : {...fallback};
     for (const [axis, start, end] of [['x', 'left', 'right'], ['y', 'top', 'bottom']]) {
         const a = name.includes(start);
@@ -126,14 +126,21 @@ export function scanAssets(root) {
     const regular = f => f.type === Gio.FileType.REGULAR;
     for (const f of children(GLib.build_filenamev([root, 'images']))) {
         if (regular(f) && imagePattern.test(f.name))
-            visuals.push({id: f.path, frames: [f.path]});
+            visuals.push({id: f.path, type: 'image', frames: [f.path], audio: null});
     }
     for (const folder of children(GLib.build_filenamev([root, 'animations']))) {
         if (folder.type !== Gio.FileType.DIRECTORY)
             continue;
-        const frames = children(folder.path).filter(f => regular(f) && imagePattern.test(f.name));
+        const entries = children(folder.path);
+        const frameDirectory = entries.find(f => f.name === 'frames' && f.type === Gio.FileType.DIRECTORY);
+        // Prefer the new layout; retain support for older folders with frames at the root.
+        const frames = (frameDirectory ? children(frameDirectory.path) : entries)
+            .filter(f => regular(f) && /\.(png|jpe?g|webp|gif)$/i.test(f.name));
+        const tracks = entries.filter(f => regular(f) && /\.mp3$/i.test(f.name));
+        const audio = tracks.find(f => f.name.toLowerCase() === 'audio.mp3') ?? tracks[0];
         if (frames.length)
-            visuals.push({id: folder.path, frames: frames.map(f => f.path)});
+            visuals.push({id: folder.path, type: 'animation', frames: frames.map(f => f.path),
+                audio: audio?.path ?? null});
     }
     const sounds = children(GLib.build_filenamev([root, 'sounds']))
         .filter(f => regular(f) && /\.mp3$/i.test(f.name)).map(f => f.path);
@@ -147,6 +154,22 @@ export function timeline(config, seconds) {
     const scale = Math.min(1, seconds * 0.65 / (phases.reduce((a, b) => a + b, 0) || 1));
     const [flash, flicker, blackout, fade] = phases.map(v => v * scale);
     const imageEnd = seconds - blackout - fade;
-    return {flashEnd: flash, flickerEnd: flash + flicker, imageEnd,
+    return {imageStart: 0, flashEnd: flash, flickerEnd: flash + flicker, imageEnd,
         blackoutEnd: imageEnd + blackout, end: seconds};
+}
+
+export function animationTimeline(config, frameCount) {
+    const imageStart = config.flashSeconds;
+    const duration = frameCount / config.animationFps;
+    const imageEnd = imageStart + duration;
+    const blackoutEnd = imageEnd + config.blackoutSeconds;
+    return {imageStart, flashEnd: imageStart,
+        flickerEnd: imageStart + Math.min(config.flickerSeconds, duration * 0.35),
+        imageEnd, blackoutEnd, end: blackoutEnd + config.fadeBackSeconds};
+}
+
+export function frameIndex(visual, config, phases, elapsed) {
+    // Never wrap to frame zero. Each frame gets one interval before blackout.
+    return Math.min(visual.frames.length - 1,
+        Math.floor(Math.max(0, elapsed - phases.imageStart) * config.animationFps));
 }

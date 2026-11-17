@@ -6,7 +6,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {DEFAULTS, readConfig, scanAssets, choose, randomBetween, timeline,
-    imageAlignment, imageGeometry} from './core.js';
+    animationTimeline, frameIndex, imageAlignment, imageGeometry} from './core.js';
 
 export default class FnafMode extends Extension {
     enable() {
@@ -111,9 +111,11 @@ export default class FnafMode extends Extension {
         Main.layoutManager.addTopChrome(this._overlay, {
             affectsStruts: false, trackFullscreen: false,
         });
-        const seconds = randomBetween(c.eventMinSeconds, c.eventMaxSeconds);
-        const phases = timeline(c, seconds);
-        this._playSounds(assets.sounds, seconds, c);
+        const phases = visual.type === 'animation'
+            ? animationTimeline(c, visual.frames.length)
+            : timeline(c, randomBetween(c.eventMinSeconds, c.eventMaxSeconds));
+        const sounds = visual.audio ? [visual.audio] : assets.sounds;
+        let soundStarted = false;
         const started = GLib.get_monotonic_time();
         const frameGeometry = new Map();
         const baseAlignment = imageAlignment(visual.id);
@@ -138,7 +140,11 @@ export default class FnafMode extends Extension {
                 this._schedule();
                 return;
             }
-            const frame = Math.floor(elapsed * c.animationFps) % visual.frames.length;
+            if (!soundStarted && elapsed >= phases.imageStart) {
+                soundStarted = true;
+                this._playSounds(sounds, phases.end - phases.imageStart, c);
+            }
+            const frame = frameIndex(visual, c, phases, elapsed);
             if (frame !== lastFrame && elapsed < phases.imageEnd) {
                 const path = visual.frames[frame];
                 const uri = Gio.File.new_for_path(path).get_uri();

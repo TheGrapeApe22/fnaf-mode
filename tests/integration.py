@@ -74,10 +74,10 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
         raise SystemExit('Integration checks require ffmpeg and mpv')
     # Also tests CLI conversion, including filenames containing shell punctuation.
     gif = home / 'input with spaces;$.gif'
-    run([ffmpeg, '-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=32x32:r=12:d=0.5',
+    run([ffmpeg, '-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=32x32:r=12:d=2',
          '-threads', '1', gif])
     run([command, 'import-gif', gif, 'converted-right'], env)
-    assert len(list((assets / 'animations/converted-right').glob('*.png'))) == 6
+    assert len(list((assets / 'animations/converted-right/frames').glob('*.png'))) == 24
     duplicate = subprocess.run([str(command), 'import-gif', str(gif), 'converted-right'],
                                env=env, capture_output=True)
     assert duplicate.returncode != 0
@@ -103,13 +103,16 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     shutil.copytree(assets / 'animations/converted-right', fixture_assets / 'animations/converted-right')
     for folder in ['images', 'sounds']:
         (fixture_assets / folder).mkdir(parents=True)
-    shutil.copyfile(next((fixture_assets / 'animations/converted-right').glob('*.png')),
+    shutil.copyfile(next((fixture_assets / 'animations/converted-right/frames').glob('*.png')),
                     fixture_assets / 'images/plain.png')
     for name in ['a.mp3', 'b.mp3']:
         shutil.copyfile(assets / 'sounds' / name, fixture_assets / 'sounds' / name)
+    associated = fixture_assets / 'animations/converted-right/FNAF 2 Jumpscare Sound.mp3'
+    shutil.copyfile(assets / 'sounds/a.mp3', associated)
     config.write_text(json.dumps({'timing': {'intervalMinSeconds': 0.5, 'intervalMaxSeconds': 0.5,
                                            'eventMinSeconds': 2, 'eventMaxSeconds': 2},
                                  'audio': {'minTracks': 2, 'maxTracks': 2},
+                                 'visuals': {'flashSeconds': 0, 'blackoutSeconds': 0, 'fadeBackSeconds': 0},
                                  'assets': {'directory': str(fixture_assets)}}))
     # Load the actual extension with just compositor-specific imports substituted.
     module = (ROOT / 'extension/extension.js').read_text()
@@ -125,6 +128,10 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     print(run(['gjs', '-m', 'tests/lifecycle.js', test_module.as_uri()], env).stdout.strip())
     argv = json.loads(capture.read_text().splitlines()[0])
     assert '--volume=45' in argv and '--length=2' in argv
+    assert argv[-1] == str(associated), 'Animation uses its own MP3, not global random tracks'
+    commands = [json.loads(line) for line in capture.read_text().splitlines()]
+    assert any(Path(args[-1]).parent == fixture_assets / 'sounds' for args in commands), \
+        'Still images keep random global audio fallback'
     output = home / 'render.wav'
     # Render captured mpv audio filters to disk, never to a sound device.
     run([mpv, '--ao=pcm', '--audio-format=s16', f'--ao-pcm-file={output}', *argv])
