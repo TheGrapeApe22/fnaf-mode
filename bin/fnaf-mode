@@ -2,6 +2,7 @@
 """Control the local GNOME extension and import user-supplied GIFs."""
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -34,6 +35,30 @@ def asset_root():
 def setting(*args):
     env = dict(os.environ, GSETTINGS_SCHEMA_DIR=str(EXTENSION / 'schemas'))
     return run(['gsettings', *args], env=env, capture_output=True).stdout.strip()
+
+
+def activation_volume():
+    config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
+    if not isinstance(config, dict) or not isinstance(config.get('audio', {}), dict):
+        raise ValueError('Config and audio must be JSON objects')
+    volume = config.get('audio', {}).get('systemVolumePercent', 50)
+    if (isinstance(volume, bool) or not isinstance(volume, (int, float)) or
+            not math.isfinite(volume) or not 0 <= volume <= 100):
+        raise ValueError('audio.systemVolumePercent must be a number from 0 to 100')
+    return volume
+
+
+def set_output_volume(volume):
+    if tool := shutil.which('wpctl'):
+        argv = [tool, 'set-volume', '@DEFAULT_AUDIO_SINK@', f'{volume:g}%']
+    elif tool := shutil.which('pactl'):
+        argv = [tool, 'set-sink-volume', '@DEFAULT_SINK@', f'{volume:g}%']
+    else:
+        raise ValueError('Setting output volume requires wpctl (WirePlumber) or pactl')
+    try:
+        run(argv, capture_output=True)
+    except subprocess.CalledProcessError as error:
+        raise ValueError('Could not set output volume: ' + (error.stderr or str(error)).strip()) from error
 
 
 def status(active, verbose=False):
@@ -118,6 +143,7 @@ def main():
         return status(active, args.verbose)
     desired = command == 'on' or (command == 'toggle' and not active)
     if desired:
+        volume = activation_volume()
         if setting('get', 'org.gnome.shell', 'disable-user-extensions') == 'true':
             raise ValueError('GNOME has disabled user extensions. Enable them in the Extensions app first.')
         try:
@@ -125,6 +151,7 @@ def main():
         except subprocess.CalledProcessError as error:
             raise ValueError('GNOME could not enable the extension. Log out and back in after deployment, '
                              'then try again. Details: ' + (error.stderr or '').strip()) from error
+        set_output_volume(volume)
     setting('set', SCHEMA, 'active', 'true' if desired else 'false')
     print(f'FNAF mode {"ON" if desired else "OFF"}')
 

@@ -24,6 +24,7 @@
     "minTracks": 2,
     "maxTracks": 2,
     "volume": 45,
+    "systemVolumePercent": 50,
     "fadeInSeconds": 0.3,
     "fadeOutSeconds": 0.65
   },

@@ -37,6 +37,13 @@ Log out and back in after first installation (or extension code updates), then:
 If `~/.local/bin` is on your PATH, use just `fnaf-mode`. Otherwise add
 `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc`.
 
+`fnaf-mode on` sets the default system output volume once to
+`audio.systemVolumePercent` (50% by default). Toggling on does the same. You can
+adjust volume freely afterward; events do not reset it. Turning mode off leaves
+the volume as-is, and mute state is preserved. This uses `wpctl` (WirePlumber),
+or `pactl` when `wpctl` is unavailable. This happens when the terminal command
+activates the mode, not when GNOME restores it after login or unlocking.
+
 `deploy.sh --no-enable` installs files without asking GNOME to enable the
 extension. The extension is initially inactive; once enabled, its on/off setting
 persists across logins. Locking the session pauses effects; unlocking restarts the
@@ -159,7 +166,8 @@ Prefer tracks at least as long as the animation plus its blackout and return fad
 or the configured still-image event duration, so the ending fade stays audible.
 Shorter tracks are padded with silence; longer tracks are faded and cut to the
 event duration. Tracks never loop. Volume is per track, so simultaneous tracks
-combine at a higher volume. No sound changes system volume.
+combine at a higher volume. Per-track playback volume is separate from the
+one-time system output volume set when you turn FNAF mode on.
 
 ## Adjust settings
 
@@ -187,6 +195,7 @@ The file has four sections: `timing`, `visuals`, `audio`, and `assets`.
 | `audio.enabled` | Allow audio |
 | `audio.minTracks`, `maxTracks` | Number of random global MP3s (1–2), plus any associated animation track |
 | `audio.volume` | Per-track mpv volume (0–100) |
+| `audio.systemVolumePercent` | System output volume set once by on/toggle-on (0–100; default 50) |
 | `audio.fadeInSeconds`, `fadeOutSeconds` | Audio fades |
 | `assets.directory` | Empty string for default media root, or an absolute path / `~/...` |
 
@@ -230,6 +239,7 @@ directories until you choose to remove them.
 ```sh
 gjs -m tests/core.js
 python3 tests/integration.py
+python3 tests/volume.py
 bash -n deploy.sh
 ```
 
