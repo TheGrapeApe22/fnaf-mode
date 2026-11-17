@@ -41,7 +41,9 @@ If `~/.local/bin` is on your PATH, use just `fnaf-mode`. Otherwise add
 extension. The extension is initially inactive; once enabled, its on/off setting
 persists across logins. Locking the session pauses effects; unlocking restarts the
 normal random wait. Each deployment overwrites the installed config with this
-repository's `config.json`. Existing installed media files are preserved.
+repository's `config.json` and mirrors its `assets/` folder into the installed
+media library. Changed files are replaced; installed files and folders absent
+from the repository are deleted, including media added only to the installed copy.
 GNOME caches extension modules, so disabling/re-enabling alone does not reliably
 load code changes; log out/in after redeployment.
 
@@ -58,8 +60,10 @@ code changes; then toggle off/on to reset any previously scheduled wait.
 ## Supply media
 
 You can populate the `assets/` folders in this repository **before deployment**.
-The deploy script copies new files into your installed media library. After
-installation, add/edit files directly in the installed library:
+The deploy script mirrors this folder into your installed media library. Keep
+assets you want to retain in the repository's `assets/` folder. You can edit the
+installed library directly for immediate changes, but deployment replaces those
+edits and deletes files absent from the repository:
 
 ```text
 ~/.local/share/fnaf-mode/assets/

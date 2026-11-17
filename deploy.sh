@@ -24,18 +24,48 @@ data = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share'))
 config = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'fnaf-mode'
 dest = data / 'gnome-shell/extensions/fnaf-mode@local'
 bin_dir = Path.home() / '.local/bin'
-# Merge directories; preserve existing media files.
+# Update extension files, then mirror repository media into the installed library.
 shutil.copytree(source / 'extension', dest, dirs_exist_ok=True,
                 ignore=shutil.ignore_patterns('gschemas.compiled'))
 subprocess.run(['glib-compile-schemas', '--strict', str(dest / 'schemas')], check=True)
 assets = data / 'fnaf-mode/assets'
-for item in (source / 'assets').rglob('*'):
-    target = assets / item.relative_to(source / 'assets')
-    if item.is_dir():
-        target.mkdir(parents=True, exist_ok=True)
-    elif not target.exists():
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(item, target)
+source_assets = source / 'assets'
+if not source_assets.is_dir():
+    raise SystemExit(f'Missing source assets directory: {source_assets}')
+if (source_assets.resolve() == assets.resolve() or
+        source_assets.resolve() in assets.resolve().parents or
+        assets.resolve() in source_assets.resolve().parents):
+    raise SystemExit('Source and installed assets directories must not overlap')
+
+def remove_asset(path):
+    # Never follow a destination symlink when deleting or replacing an entry.
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+def mirror_assets(src, dst):
+    if dst.is_symlink() or (dst.exists() and not dst.is_dir()):
+        remove_asset(dst)
+    dst.mkdir(parents=True, exist_ok=True)
+    entries = {item.name: item for item in src.iterdir()}
+    for existing in dst.iterdir():
+        if existing.name not in entries:
+            remove_asset(existing)
+    for name, item in entries.items():
+        target = dst / name
+        if item.is_symlink():
+            if target.exists() or target.is_symlink():
+                remove_asset(target)
+            target.symlink_to(os.readlink(item))
+        elif item.is_dir():
+            mirror_assets(item, target)
+        else:
+            if target.is_symlink() or target.is_dir():
+                remove_asset(target)
+            shutil.copy2(item, target)
+
+mirror_assets(source_assets, assets)
 config.mkdir(parents=True, exist_ok=True)
 shutil.copy2(source / 'config.json', config / 'config.json')
 bin_dir.mkdir(parents=True, exist_ok=True)

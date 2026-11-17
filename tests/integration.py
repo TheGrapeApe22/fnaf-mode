@@ -57,13 +57,44 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     assets = home / 'data/fnaf-mode/assets'
     assert run([command, 'config'], env).stdout.strip() == str(config)
     assert run([command, 'assets'], env).stdout.strip() == str(assets)
-    # Re-deployment replaces installed config while preserving original media.
+    # Re-deployment replaces config and removes installed-only media.
     config.write_text('{"soundVolume": 17}')
     (assets / 'images/keep.png').write_bytes(b'personal media')
     run(['bash', 'deploy.sh', '--no-enable'], env)
     assert config.read_bytes() == (ROOT / 'config.json').read_bytes()
-    assert (assets / 'images/keep.png').read_bytes() == b'personal media'
-    print('PASS: isolated deployment, CLI paths, config overwrite, media preservation')
+    assert not (assets / 'images/keep.png').exists()
+    print('PASS: isolated deployment, CLI paths, config overwrite, installed-only media removal')
+
+    # Simulate actual source deletions and updates without changing repository assets.
+    fixture = home / 'deploy-source'
+    fixture.mkdir()
+    for name in ['deploy.sh', 'config.json']:
+        shutil.copyfile(ROOT / name, fixture / name)
+    for name in ['bin', 'extension']:
+        (fixture / name).symlink_to(ROOT / name, target_is_directory=True)
+    source_media = fixture / 'assets'
+    (source_media / 'images').mkdir(parents=True)
+    (source_media / 'animations/removed/frames').mkdir(parents=True)
+    (source_media / 'images/updated.png').write_bytes(b'old')
+    (source_media / 'images/deleted.png').write_bytes(b'delete me')
+    (source_media / 'animations/removed/frames/001.png').write_bytes(b'frame')
+    mirror_env = dict(env, XDG_DATA_HOME=str(home / 'mirror-data'))
+    run(['bash', fixture / 'deploy.sh', '--no-enable'], mirror_env)
+    mirrored = home / 'mirror-data/fnaf-mode/assets'
+    (source_media / 'images/updated.png').write_bytes(b'new')
+    (source_media / 'images/deleted.png').unlink()
+    shutil.rmtree(source_media / 'animations/removed')
+    outside = home / 'outside-media'
+    outside.mkdir()
+    (outside / 'keep.png').write_bytes(b'untouched')
+    (mirrored / 'stale-link').symlink_to(outside, target_is_directory=True)
+    run(['bash', fixture / 'deploy.sh', '--no-enable'], mirror_env)
+    assert (mirrored / 'images/updated.png').read_bytes() == b'new'
+    assert not (mirrored / 'images/deleted.png').exists()
+    assert not (mirrored / 'animations/removed').exists()
+    assert not (mirrored / 'stale-link').is_symlink()
+    assert (outside / 'keep.png').read_bytes() == b'untouched'
+    print('PASS: source media deletion, nested folder removal, updates, symlink-safe pruning')
     custom_assets = home / 'custom media'
     config.write_text(json.dumps({'assets': {'directory': str(custom_assets)}}))
     assert run([command, 'assets'], env).stdout.strip() == str(custom_assets)
