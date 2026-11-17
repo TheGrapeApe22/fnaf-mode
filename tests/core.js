@@ -1,0 +1,67 @@
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import {DEFAULTS, normalizeConfig, readConfig, scanAssets, choose, timeline} from '../extension/core.js';
+
+function assert(value, message) {
+    if (!value)
+        throw new Error(message);
+}
+function write(path, text = '') {
+    GLib.mkdir_with_parents(GLib.path_get_dirname(path), 0o700);
+    GLib.file_set_contents(path, text);
+}
+function remove(file) {
+    if (file.query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) === Gio.FileType.DIRECTORY) {
+        const entries = file.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
+        let info;
+        while ((info = entries.next_file(null)))
+            remove(file.get_child(info.get_name()));
+        entries.close(null);
+    }
+    file.delete(null);
+}
+
+const root = GLib.dir_make_tmp('fnaf-test-XXXXXX');
+try {
+    const c = normalizeConfig({intervalMinSeconds: 9, intervalMaxSeconds: 2,
+        animationFps: 999, soundMinTracks: 2, soundMaxTracks: 1,
+        fadeBackSeconds: Infinity, flashOpacity: -20});
+    assert(c.intervalMaxSeconds === 9 && c.animationFps === 30, 'Timing bounds');
+    assert(c.soundMaxTracks === 2 && c.flashOpacity === 0, 'Track/opacity bounds');
+    assert(c.fadeBackSeconds === DEFAULTS.fadeBackSeconds, 'Non-finite values rejected');
+    for (const duration of [0.5, 2, 4, 10]) {
+        const t = timeline(normalizeConfig({flashSeconds: 99}), duration);
+        assert(t.flashEnd <= t.flickerEnd && t.flickerEnd < t.imageEnd &&
+            t.imageEnd <= t.blackoutEnd && t.blackoutEnd <= t.end, 'Phase order');
+        assert(t.end === duration, 'Whole event fits requested duration');
+    }
+    write(`${root}/images/a.png`);
+    write(`${root}/images/b.JPG`);
+    write(`${root}/images/readme.md`);
+    write(`${root}/animations/scare/frame-10.png`);
+    write(`${root}/animations/scare/frame-2.png`);
+    write(`${root}/animations/.import-partial/frame-1.png`);
+    write(`${root}/sounds/a.mp3`);
+    write(`${root}/sounds/b.MP3`);
+    const assets = scanAssets(root);
+    assert(assets.visuals.length === 3 && assets.sounds.length === 2, 'Asset discovery');
+    assert(assets.visuals[2].frames[0].endsWith('frame-2.png'), 'Natural frame order');
+    assert(choose([], null) === null, 'Empty library');
+    for (let i = 0; i < 50; i++)
+        assert(choose(assets.visuals, assets.visuals[0].id).id !== assets.visuals[0].id, 'No repeat');
+    assert(choose([assets.visuals[0]], assets.visuals[0].id) === assets.visuals[0], 'Single visual');
+    assert(scanAssets(`${root}/missing`).visuals.length === 0, 'Missing library');
+    write(`${root}/config.json`, '{"soundEnabled": false}');
+    assert(!readConfig(`${root}/config.json`).soundEnabled, 'Read supplied config');
+    write(`${root}/config.json`, '{broken');
+    let rejected = false;
+    try { readConfig(`${root}/config.json`); } catch (_) { rejected = true; }
+    assert(rejected, 'Malformed JSON rejected');
+    for (const name of ['core.js', 'extension.js']) {
+        const [, bytes] = GLib.file_get_contents(`extension/${name}`);
+        Reflect.parse(new TextDecoder().decode(bytes), {target: 'module'});
+    }
+    print('PASS: config validation, event timing, asset discovery, selection, module syntax');
+} finally {
+    remove(Gio.File.new_for_path(root));
+}

@@ -1,0 +1,8 @@
+{
+  "uuid": "fnaf-mode@local",
+  "name": "FNAF Mode",
+  "description": "Click-through primary-screen scares with user-supplied images, animation frames, and fading audio.",
+  "shell-version": ["50"],
+  "settings-schema": "org.gnome.shell.extensions.fnaf-mode",
+  "version": 1
+}

@@ -1,0 +1,220 @@
+import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import St from 'gi://St';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {DEFAULTS, readConfig, scanAssets, choose, randomBetween, timeline} from './core.js';
+
+export default class FnafMode extends Extension {
+    enable() {
+        this._sources = new Set();
+        this._players = new Set();
+        this._settings = this.getSettings();
+        this._configPath = GLib.build_filenamev([GLib.get_user_config_dir(), 'fnaf-mode', 'config.json']);
+        this._settingsId = this._settings.connect('changed::active', () => this._sync());
+        this._monitorId = Main.layoutManager.connect('monitors-changed', () => this._sync());
+        this._sessionId = Main.sessionMode.connect('updated', () => this._sync());
+        this._sync();
+    }
+
+    _later(ms, callback) {
+        const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.max(1, Math.round(ms)), () => {
+            this._sources.delete(id);
+            try {
+                callback();
+            } catch (error) {
+                console.error(`[FNAF Mode] ${error.stack ?? error}`);
+                this._clear();
+                this._settings.set_boolean('active', false);
+            }
+            return GLib.SOURCE_REMOVE;
+        });
+        this._sources.add(id);
+    }
+
+    _clear() {
+        for (const id of this._sources)
+            GLib.source_remove(id);
+        this._sources.clear();
+        for (const player of this._players) {
+            try { player.send_signal(15); } catch (_) { /* Already exited. */ }
+        }
+        this._players.clear();
+        if (this._overlay) {
+            Main.layoutManager.removeChrome(this._overlay);
+            this._overlay.destroy();
+            this._overlay = null;
+        }
+        this._image = null;
+        this._light = null;
+    }
+
+    _sync() {
+        this._clear();
+        if (this._settings.get_boolean('active') && !Main.sessionMode.isLocked &&
+            !Main.sessionMode.isGreeter && Main.layoutManager.primaryMonitor)
+            this._schedule();
+    }
+
+    _config() {
+        try {
+            return readConfig(this._configPath);
+        } catch (error) {
+            // Retain the previous good settings if a file is being edited or is invalid.
+            console.error(`[FNAF Mode] Invalid config: ${error.message}`);
+            return this._lastConfig ?? {...DEFAULTS};
+        }
+    }
+
+    _schedule() {
+        this._lastConfig = this._config();
+        const c = this._lastConfig;
+        this._later(randomBetween(c.intervalMinSeconds, c.intervalMaxSeconds) * 1000,
+            () => this._begin());
+    }
+
+    _begin() {
+        const c = this._config();
+        this._lastConfig = c;
+        const root = c.assetDirectory
+            ? (c.assetDirectory.startsWith('~/')
+                ? GLib.build_filenamev([GLib.get_home_dir(), c.assetDirectory.slice(2)]) : c.assetDirectory)
+            : GLib.build_filenamev([GLib.get_user_data_dir(), 'fnaf-mode', 'assets']);
+        const assets = scanAssets(root);
+        const visual = choose(assets.visuals, this._previousVisual);
+        if (!visual) {
+            if (!this._warnedEmpty) {
+                console.warn(`[FNAF Mode] Add images or animation frames to ${root}; waiting for assets.`);
+                this._warnedEmpty = true;
+            }
+            this._schedule();
+            return;
+        }
+        this._warnedEmpty = false;
+        this._previousVisual = visual.id;
+        const monitor = Main.layoutManager.primaryMonitor;
+        if (!monitor)
+            return;
+        this._overlay = new St.Widget({reactive: false, can_focus: false,
+            x: monitor.x, y: monitor.y, width: monitor.width, height: monitor.height,
+            clip_to_allocation: true});
+        this._image = new St.Widget({reactive: false, can_focus: false,
+            width: monitor.width, height: monitor.height});
+        this._light = new St.Widget({reactive: false, can_focus: false,
+            width: monitor.width, height: monitor.height});
+        this._overlay.add_child(this._image);
+        this._overlay.add_child(this._light);
+        // GNOME 50 removed affectsInputRegion; non-reactive actors provide passthrough.
+        Main.layoutManager.addTopChrome(this._overlay, {
+            affectsStruts: false, trackFullscreen: false,
+        });
+        const seconds = randomBetween(c.eventMinSeconds, c.eventMaxSeconds);
+        const phases = timeline(c, seconds);
+        this._playSounds(assets.sounds, seconds, c);
+        const started = GLib.get_monotonic_time();
+        let lastFrame = -1;
+        let lastFlicker = -1;
+        let fadeStarted = false;
+        const tick = () => {
+            const elapsed = (GLib.get_monotonic_time() - started) / 1000000;
+            if (elapsed >= phases.end) {
+                this._clear();
+                this._schedule();
+                return;
+            }
+            const frame = Math.floor(elapsed * c.animationFps) % visual.frames.length;
+            if (frame !== lastFrame && elapsed < phases.imageEnd) {
+                const uri = Gio.File.new_for_path(visual.frames[frame]).get_uri();
+                // Encoded URI prevents filenames from injecting CSS.
+                this._image.set_style(`background-image: url("${uri}"); background-size: contain; background-position: center; background-repeat: no-repeat;`);
+                lastFrame = frame;
+            }
+            if (elapsed < phases.flashEnd) {
+                this._image.opacity = 0;
+                this._light.set_style('background-color: white;');
+                this._light.opacity = c.flashOpacity;
+            } else if (elapsed < phases.flickerEnd) {
+                const step = Math.floor(elapsed * 1000 / c.flickerStepMs);
+                if (step !== lastFlicker) {
+                    this._image.opacity = Math.random() < 0.3 ? 0 : c.imageOpacity;
+                    this._light.set_style('background-color: black;');
+                    this._light.opacity = Math.floor(randomBetween(60, 230));
+                    lastFlicker = step;
+                }
+            } else if (elapsed < phases.imageEnd) {
+                this._image.opacity = c.imageOpacity;
+                this._light.opacity = 0;
+            } else if (!fadeStarted) {
+                this._image.opacity = 0;
+                this._light.set_style('background-color: black;');
+                this._light.opacity = 255;
+                if (elapsed >= phases.blackoutEnd) {
+                    fadeStarted = true;
+                    this._light.ease({opacity: 0,
+                        duration: Math.max(1, (phases.end - elapsed) * 1000),
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+                }
+            }
+            this._later(1000 / Math.max(20, c.animationFps), tick);
+        };
+        tick();
+    }
+
+    _playSounds(files, seconds, c) {
+        if (!c.soundEnabled || !files.length)
+            return;
+        const mpv = GLib.find_program_in_path('mpv');
+        if (!mpv) {
+            console.warn('[FNAF Mode] Install mpv to enable audio.');
+            return;
+        }
+        const count = Math.min(files.length,
+            Math.floor(randomBetween(c.soundMinTracks, c.soundMaxTracks + 1)));
+        const available = [...files];
+        for (let i = 0; i < count; i++) {
+            const file = available.splice(Math.floor(Math.random() * available.length), 1)[0];
+            const fadeIn = Math.min(c.soundFadeInSeconds, seconds / 2);
+            const fadeOut = Math.min(c.soundFadeOutSeconds, seconds / 2);
+            const filters = [`apad=whole_dur=${seconds}`];
+            if (fadeIn > 0)
+                filters.push(`afade=t=in:st=0:d=${fadeIn}`);
+            if (fadeOut > 0)
+                filters.push(`afade=t=out:st=${seconds - fadeOut}:d=${fadeOut}`);
+            const argv = [mpv, '--no-config', '--no-video', '--audio-display=no',
+                '--no-terminal', '--input-terminal=no',
+                `--length=${seconds}`, `--volume=${c.soundVolume}`];
+            if (filters.length)
+                argv.push(`--af=lavfi=[${filters.join(',')}]`);
+            argv.push('--', file);
+            try {
+                const player = Gio.Subprocess.new(argv,
+                    Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE);
+                const players = this._players;
+                players.add(player);
+                player.wait_async(null, (proc, result) => {
+                    try {
+                        proc.wait_finish(result);
+                        if (!proc.get_successful() && !proc.get_if_signaled())
+                            console.warn('[FNAF Mode] mpv failed to play a supplied track.');
+                    } catch (error) {
+                        console.warn(`[FNAF Mode] Audio: ${error.message}`);
+                    }
+                    players.delete(proc);
+                });
+            } catch (error) {
+                console.warn(`[FNAF Mode] Audio: ${error.message}`);
+            }
+        }
+    }
+
+    disable() {
+        this._settings.disconnect(this._settingsId);
+        Main.layoutManager.disconnect(this._monitorId);
+        Main.sessionMode.disconnect(this._sessionId);
+        this._clear();
+        this._settings = null;
+        this._lastConfig = null;
+        this._previousVisual = null;
+    }
+}

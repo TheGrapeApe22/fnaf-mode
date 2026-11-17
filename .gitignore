@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+gschemas.compiled
+# Keep personal media out of git; retain the folder instructions.
+assets/images/*
+!assets/images/README.md
+assets/animations/*
+!assets/animations/README.md
+assets/sounds/*
+!assets/sounds/README.md

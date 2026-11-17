@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""Control the local GNOME extension and import user-supplied GIFs."""
+import argparse
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+
+UUID = 'fnaf-mode@local'
+SCHEMA = 'org.gnome.shell.extensions.fnaf-mode'
+DATA = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share'))
+CONFIG = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'fnaf-mode/config.json'
+EXTENSION = DATA / 'gnome-shell/extensions' / UUID
+
+
+def run(argv, **kwargs):
+    return subprocess.run(argv, check=True, text=True, **kwargs)
+
+
+def asset_root():
+    config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
+    custom = config.get('assetDirectory', '')
+    if not isinstance(custom, str) or (custom and not custom.startswith(('/', '~/'))):
+        raise ValueError('assetDirectory must be an absolute path or start with ~/')
+    return Path(custom).expanduser() if custom else DATA / 'fnaf-mode/assets'
+
+
+def setting(*args):
+    env = dict(os.environ, GSETTINGS_SCHEMA_DIR=str(EXTENSION / 'schemas'))
+    return run(['gsettings', *args], env=env, capture_output=True).stdout.strip()
+
+
+def import_gif(source, name, fps):
+    if not shutil.which('ffmpeg'):
+        raise ValueError('GIF import needs ffmpeg: sudo apt install ffmpeg')
+    if not source.is_file():
+        raise ValueError(f'No such file: {source}')
+    if name.startswith('.') or '/' in name or not name.strip():
+        raise ValueError('Animation name must be a single, non-hidden folder name')
+    root = asset_root() / 'animations'
+    root.mkdir(parents=True, exist_ok=True)
+    target = root / name
+    if target.exists():
+        raise ValueError(f'{target} already exists; choose another name')
+    # Hidden temporary directory is ignored by the extension until conversion finishes.
+    with tempfile.TemporaryDirectory(prefix='.import-', dir=root) as tmp:
+        run(['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-i',
+             str(source.resolve()), '-an', '-vf',
+             f'fps={fps},scale=1280:1280:force_original_aspect_ratio=decrease',
+             '-frames:v', '900', str(Path(tmp) / 'frame-%05d.png')])
+        if not list(Path(tmp).glob('*.png')):
+            raise ValueError('No frames decoded')
+        # Rename within the same filesystem so the shell never sees partial output.
+        Path(tmp).rename(target)
+    print(f'Imported {target}; set animationFps to {fps} in {CONFIG}')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest='command')
+    for command in ('toggle', 'on', 'off', 'status', 'config', 'assets'):
+        sub.add_parser(command)
+    gif = sub.add_parser('import-gif', help='Convert a GIF to a frame animation (requires ffmpeg)')
+    gif.add_argument('source', type=Path)
+    gif.add_argument('name', help='New animation folder name')
+    gif.add_argument('--fps', type=int, choices=range(1, 31), default=12, metavar='1–30')
+    args = parser.parse_args()
+    command = args.command or 'toggle'
+    if command == 'config':
+        print(CONFIG)
+        return
+    if command == 'assets':
+        print(asset_root())
+        return
+    if command == 'import-gif':
+        import_gif(args.source, args.name, args.fps)
+        return
+    if not (EXTENSION / 'schemas/gschemas.compiled').exists():
+        raise ValueError('Extension is not installed; run ./deploy.sh first')
+    active = setting('get', SCHEMA, 'active') == 'true'
+    if command == 'status':
+        print(f'FNAF mode requested: {"ON" if active else "OFF"}')
+        run(['gnome-extensions', 'info', UUID])
+        return
+    desired = command == 'on' or (command == 'toggle' and not active)
+    if desired:
+        if setting('get', 'org.gnome.shell', 'disable-user-extensions') == 'true':
+            raise ValueError('GNOME has disabled user extensions. Enable them in the Extensions app first.')
+        try:
+            run(['gnome-extensions', 'enable', UUID], capture_output=True)
+        except subprocess.CalledProcessError as error:
+            raise ValueError('GNOME could not enable the extension. Log out and back in after deployment, '
+                             'then try again. Details: ' + (error.stderr or '').strip()) from error
+    setting('set', SCHEMA, 'active', 'true' if desired else 'false')
+    print(f'FNAF mode {"ON" if desired else "OFF"}')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        print(f'fnaf-mode: {error}', file=sys.stderr)
+        sys.exit(1)

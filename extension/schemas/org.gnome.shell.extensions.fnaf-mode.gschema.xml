@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.fnaf-mode" path="/org/gnome/shell/extensions/fnaf-mode/">
+    <key name="active" type="b">
+      <default>false</default>
+      <summary>Run the scare loop</summary>
+    </key>
+  </schema>
+</schemalist>

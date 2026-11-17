@@ -1,0 +1,21 @@
+{
+  "intervalMinSeconds": 5,
+  "intervalMaxSeconds": 50,
+  "eventMinSeconds": 2,
+  "eventMaxSeconds": 4,
+  "flashSeconds": 0.12,
+  "flashOpacity": 180,
+  "flickerSeconds": 0.45,
+  "flickerStepMs": 90,
+  "blackoutSeconds": 0.2,
+  "fadeBackSeconds": 0.65,
+  "imageOpacity": 255,
+  "animationFps": 12,
+  "soundEnabled": true,
+  "soundMinTracks": 1,
+  "soundMaxTracks": 2,
+  "soundVolume": 45,
+  "soundFadeInSeconds": 0.3,
+  "soundFadeOutSeconds": 0.65,
+  "assetDirectory": ""
+}
