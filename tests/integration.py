@@ -1,21 +1,50 @@
 #!/usr/bin/env python3
 """Isolated installation and real audio decoding; never touches the live session."""
 import array
+import contextlib
+import io
 import json
 import math
 import os
+import runpy
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import wave
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(args, env=None):
-    return subprocess.run([str(a) for a in args], cwd=ROOT, env=env,
-                          check=True, text=True, capture_output=True)
+    try:
+        return subprocess.run([str(a) for a in args], cwd=ROOT, env=env,
+                              check=True, text=True, capture_output=True)
+    except subprocess.CalledProcessError as error:
+        print(error.stdout or '')
+        print(error.stderr or '')
+        raise
+
+
+cli_main = runpy.run_path(str(ROOT / 'bin/fnaf-mode'))['main']
+for active, shell_state, expected, code in [
+    (False, 'ACTIVE', 'FNAF mode OFF', 0),
+    (True, 'ACTIVE', 'FNAF mode ON', 0),
+    (True, 'ERROR', 'FNAF mode OFF (requested ON; GNOME extension state: ERROR)', 0),
+    (True, None, 'FNAF mode UNKNOWN (requested ON); GNOME status unavailable', 1),
+]:
+    def shell_info(*args, **kwargs):
+        if shell_state is None:
+            raise subprocess.CalledProcessError(2, args[0])
+        return subprocess.CompletedProcess(args[0], 0, stdout=f'  State: {shell_state}\n')
+    output = io.StringIO()
+    with patch.dict(cli_main.__globals__, run=shell_info, setting=lambda *a: str(active).lower()), \
+            patch('pathlib.Path.exists', return_value=True), \
+            patch('sys.argv', ['fnaf-mode', 'status']), contextlib.redirect_stdout(output):
+        assert cli_main() == code
+    assert output.getvalue().strip() == expected
+print('PASS: CLI status reports ON, OFF, inactive extension and unavailable GNOME')
 
 
 with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
@@ -47,9 +76,9 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     gif = home / 'input with spaces;$.gif'
     run([ffmpeg, '-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=32x32:r=12:d=0.5',
          '-threads', '1', gif])
-    run([command, 'import-gif', gif, 'converted'], env)
-    assert len(list((assets / 'animations/converted').glob('*.png'))) == 6
-    duplicate = subprocess.run([str(command), 'import-gif', str(gif), 'converted'],
+    run([command, 'import-gif', gif, 'converted-right'], env)
+    assert len(list((assets / 'animations/converted-right').glob('*.png'))) == 6
+    duplicate = subprocess.run([str(command), 'import-gif', str(gif), 'converted-right'],
                                env=env, capture_output=True)
     assert duplicate.returncode != 0
     print('PASS: GIF decoding, frame import, refusal to overwrite')
@@ -69,9 +98,19 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     run([ffmpeg, '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=4',
          assets / 'sounds/a.mp3'])
     shutil.copyfile(assets / 'sounds/a.mp3', assets / 'sounds/b.mp3')
+    # Keep lifecycle selection deterministic even when the repo contains personal media.
+    fixture_assets = home / 'fixture-assets'
+    shutil.copytree(assets / 'animations/converted-right', fixture_assets / 'animations/converted-right')
+    for folder in ['images', 'sounds']:
+        (fixture_assets / folder).mkdir(parents=True)
+    shutil.copyfile(next((fixture_assets / 'animations/converted-right').glob('*.png')),
+                    fixture_assets / 'images/plain.png')
+    for name in ['a.mp3', 'b.mp3']:
+        shutil.copyfile(assets / 'sounds' / name, fixture_assets / 'sounds' / name)
     config.write_text(json.dumps({'timing': {'intervalMinSeconds': 0.5, 'intervalMaxSeconds': 0.5,
                                            'eventMinSeconds': 2, 'eventMaxSeconds': 2},
-                                 'audio': {'minTracks': 2, 'maxTracks': 2}}))
+                                 'audio': {'minTracks': 2, 'maxTracks': 2},
+                                 'assets': {'directory': str(fixture_assets)}}))
     # Load the actual extension with just compositor-specific imports substituted.
     module = (ROOT / 'extension/extension.js').read_text()
     module = module.replace("import Clutter from 'gi://Clutter';", '')

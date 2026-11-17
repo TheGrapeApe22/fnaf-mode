@@ -36,6 +36,31 @@ def setting(*args):
     return run(['gsettings', *args], env=env, capture_output=True).stdout.strip()
 
 
+def status(active, verbose=False):
+    # OFF needs no running Shell connection; ON must also have a loaded extension.
+    if not active and not verbose:
+        print('FNAF mode OFF')
+        return 0
+    try:
+        info = run(['gnome-extensions', 'info', UUID], capture_output=True,
+                   env=dict(os.environ, LC_ALL='C')).stdout
+    except (OSError, subprocess.CalledProcessError):
+        print(f'FNAF mode {"UNKNOWN (requested ON)" if active else "OFF"}; GNOME status unavailable')
+        return 1 if active else 0
+    fields = dict(line.strip().split(':', 1) for line in info.splitlines() if ':' in line)
+    state = fields.get('State', '').strip()
+    running = state == 'ACTIVE'
+    if active and running:
+        print('FNAF mode ON')
+    elif active:
+        print(f'FNAF mode OFF (requested ON; GNOME extension state: {state or "unknown"})')
+    else:
+        print('FNAF mode OFF')
+    if verbose:
+        print(info, end='' if info.endswith('\n') else '\n')
+    return 0
+
+
 def import_gif(source, name, fps):
     if not shutil.which('ffmpeg'):
         raise ValueError('GIF import needs ffmpeg: sudo apt install ffmpeg')
@@ -64,8 +89,10 @@ def import_gif(source, name, fps):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command')
-    for command in ('toggle', 'on', 'off', 'status', 'config', 'assets'):
-        sub.add_parser(command)
+    for command in ('toggle', 'on', 'off', 'config', 'assets'):
+        sub.add_parser(command, help='Switch FNAF mode on or off (also the default)' if command == 'toggle' else None)
+    status_parser = sub.add_parser('status', help='Check whether FNAF mode is ON or OFF')
+    status_parser.add_argument('--verbose', action='store_true', help='Include GNOME extension details')
     gif = sub.add_parser('import-gif', help='Convert a GIF to a frame animation (requires ffmpeg)')
     gif.add_argument('source', type=Path)
     gif.add_argument('name', help='New animation folder name')
@@ -85,9 +112,7 @@ def main():
         raise ValueError('Extension is not installed; run ./deploy.sh first')
     active = setting('get', SCHEMA, 'active') == 'true'
     if command == 'status':
-        print(f'FNAF mode requested: {"ON" if active else "OFF"}')
-        run(['gnome-extensions', 'info', UUID])
-        return
+        return status(active, args.verbose)
     desired = command == 'on' or (command == 'toggle' and not active)
     if desired:
         if setting('get', 'org.gnome.shell', 'disable-user-extensions') == 'true':
@@ -103,7 +128,7 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()
+        sys.exit(main())
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f'fnaf-mode: {error}', file=sys.stderr)
         sys.exit(1)

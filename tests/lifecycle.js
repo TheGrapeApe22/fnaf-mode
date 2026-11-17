@@ -16,6 +16,11 @@ assert(extension._sources.size === 1, 'Single pending event');
 spin(650);
 assert(layoutManager.actors.size === 1 && extension._players.size === 2, 'Event and paired audio started');
 assert(extension._overlay.x === 17 && extension._overlay.y === 29, 'Primary monitor positioning');
+assert(extension._image.x === 840 && extension._image.y === 0 &&
+    extension._image.width === 1080 && extension._image.height === 1080,
+    `Animation folder right hint positions actual decoded frame at the screen edge: ${JSON.stringify({
+        x: extension._image.x, y: extension._image.y, width: extension._image.width,
+        height: extension._image.height, visual: extension._previousVisual})}`);
 // Sample beyond the opening flicker, while the image is still being shown.
 spin(500);
 const middleOpacities = [];
@@ -39,6 +44,13 @@ sessionMode.emit('updated');
 spin(2700);
 assert(settings.active, 'No hidden callback errors');
 assert(!layoutManager.actors.size && extension._sources.size === 1, 'Completed event schedules normal wait');
+const lastEnd = layoutManager.events.at(-1);
+assert(lastEnd.kind === 'end', 'Previous event finished');
+spin(500);
+const nextStart = layoutManager.events.at(-1);
+assert(nextStart.kind === 'start', 'Next event begins after configured wait');
+const gap = nextStart.time - lastEnd.time;
+assert(gap >= 0.49 && gap < 0.8, `Configured 0.5-second gap respected: ${gap}`);
 extension.disable();
 assert(!settings.handlers.size && !sessionMode.handlers.size && !layoutManager.handlers.size &&
     !extension._sources.size, 'Disable disconnects signals and removes timers');

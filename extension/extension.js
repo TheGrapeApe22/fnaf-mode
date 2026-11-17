@@ -1,10 +1,12 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import GdkPixbuf from 'gi://GdkPixbuf';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
-import {DEFAULTS, readConfig, scanAssets, choose, randomBetween, timeline} from './core.js';
+import {DEFAULTS, readConfig, scanAssets, choose, randomBetween, timeline,
+    imageAlignment, imageGeometry} from './core.js';
 
 export default class FnafMode extends Extension {
     enable() {
@@ -113,6 +115,8 @@ export default class FnafMode extends Extension {
         const phases = timeline(c, seconds);
         this._playSounds(assets.sounds, seconds, c);
         const started = GLib.get_monotonic_time();
+        const frameGeometry = new Map();
+        const baseAlignment = imageAlignment(visual.id);
         let lastFrame = -1;
         let lastFlicker = -1;
         let burstStart = phases.flickerEnd + randomBetween(c.flickerGapMinSeconds, c.flickerGapMaxSeconds);
@@ -136,9 +140,23 @@ export default class FnafMode extends Extension {
             }
             const frame = Math.floor(elapsed * c.animationFps) % visual.frames.length;
             if (frame !== lastFrame && elapsed < phases.imageEnd) {
-                const uri = Gio.File.new_for_path(visual.frames[frame]).get_uri();
+                const path = visual.frames[frame];
+                const uri = Gio.File.new_for_path(path).get_uri();
+                if (!frameGeometry.has(path)) {
+                    let width = 0;
+                    let height = 0;
+                    try {
+                        [, width, height] = GdkPixbuf.Pixbuf.get_file_info(path);
+                    } catch (_) { /* A removed or unreadable frame retains screen-sized geometry. */ }
+                    frameGeometry.set(path, imageGeometry(width, height, monitor.width, monitor.height,
+                        imageAlignment(path, baseAlignment)));
+                }
+                const geometry = frameGeometry.get(path);
+                this._image.set_size(geometry.width, geometry.height);
+                this._image.set_position(geometry.x, geometry.y);
+                // Position the fitted actor: St does not support CSS position keywords/percentages.
                 // Encoded URI prevents filenames from injecting CSS.
-                this._image.set_style(`background-image: url("${uri}"); background-size: contain; background-position: center; background-repeat: no-repeat;`);
+                this._image.set_style(`background-image: url("${uri}"); background-size: contain; background-repeat: no-repeat;`);
                 lastFrame = frame;
             }
             if (elapsed < phases.flashEnd) {

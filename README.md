@@ -24,9 +24,11 @@ Log out and back in after first installation (or extension code updates), then:
 
 ```sh
 ~/.local/bin/fnaf-mode on
-~/.local/bin/fnaf-mode       # toggle
+~/.local/bin/fnaf-mode toggle # switch on/off
+~/.local/bin/fnaf-mode        # same as toggle
 ~/.local/bin/fnaf-mode off   # immediately remove effects and stop audio
 ~/.local/bin/fnaf-mode status
+~/.local/bin/fnaf-mode status --verbose # include GNOME extension details
 ```
 
 If `~/.local/bin` is on your PATH, use just `fnaf-mode`. Otherwise add
@@ -39,6 +41,16 @@ normal random wait. Each deployment overwrites the installed config with this
 repository's `config.json`. Existing installed media files are preserved.
 GNOME caches extension modules, so disabling/re-enabling alone does not reliably
 load code changes; log out/in after redeployment.
+
+`status` prints `FNAF mode ON` or `FNAF mode OFF`. An ON setting with an inactive
+extension is reported as OFF with the GNOME state. If GNOME cannot be reached,
+an ON setting is reported as UNKNOWN rather than claiming effects are running.
+
+The interval measures normal desktop time **after the entire previous event
+finishes**. A 4-second event plus a 2-second interval means approximately 6 seconds
+between event starts, with 2 seconds of normal desktop in between. If the normal
+gap itself is much longer, redeploy your config and log out/in to load extension
+code changes; then toggle off/on to reset any previously scheduled wait.
 
 ## Supply media
 
@@ -67,11 +79,32 @@ installation, add/edit files directly in the installed library:
 Each still and each animation subfolder counts as one visual. Frames are sorted
 naturally by filename and loop at `visuals.animationFps`. PNG, JPEG and WebP are supported.
 Use reasonably sized frames (roughly your screen resolution) and short animations;
-these are rendered inside GNOME Shell. Images are centered and fitted without
-cropping. Transparent images reveal your desktop; opaque images cover it.
+these are rendered inside GNOME Shell. Images are fitted without cropping.
+Transparent images reveal your desktop; opaque images cover it.
 Hidden files/folders and symlinks are ignored. Personal media in this repository
 is git-ignored. With no visuals, the extension waits silently for you to add some.
 With no MP3s, events are silent.
+
+Filename hints align the fitted image with the corresponding screen edge:
+
+| Filename | Alignment |
+| --- | --- |
+| `mangle-top.png` | Top, horizontally centered |
+| `mangle-bottom.png` | Bottom, horizontally centered |
+| `mangle-left.png` | Left, vertically centered |
+| `mangle-right.png` | Right, vertically centered |
+| `mangle-top-left.png` | Top-left corner |
+| `mangle_bottom_right.png` | Bottom-right corner |
+| `mangle.png` or `mangle-center.png` | Center |
+
+Hints are case-insensitive substrings, so `MangleTopRight.png` also works.
+Conflicting hints such as `top-bottom` center that axis. Animation folder names
+provide defaults (`animations/jumpscare-bottom-left/frame-001.png`); a frame's own
+hints override the corresponding axis. `center` (or `centre`) resets both axes.
+Only the filename and animation folder name are used, not parent directory names.
+Alignment moves the space around an image; an image filling an entire screen axis
+already touches both edges on that axis. Transparent margins inside a file remain.
+Rename installed assets to change alignment without redeploying.
 
 GIFs must be converted to frame folders:
 
@@ -148,8 +181,8 @@ gnome-extensions disable fnaf-mode@local
 
 If GNOME reports “extension does not exist” immediately after installation, log
 out/in, then run `fnaf-mode on`. If user extensions are globally disabled, enable
-them in the Extensions app first. `status` prints the requested on/off setting
-and GNOME's extension state so you can check that it actually loaded.
+them in the Extensions app first. `status` checks the on/off setting and whether
+GNOME loaded the extension. Use `--verbose` to include full extension details.
 
 To uninstall, disable the extension, then remove
 `~/.local/share/gnome-shell/extensions/fnaf-mode@local` and

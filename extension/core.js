@@ -76,6 +76,30 @@ export function choose(items, previous = null) {
     return candidates[Math.floor(Math.random() * candidates.length)] ?? null;
 }
 
+export function imageAlignment(filename, fallback = {x: 0.5, y: 0.5}) {
+    const name = GLib.path_get_basename(filename).replace(/\.(png|jpe?g|webp)$/i, '').toLowerCase();
+    const alignment = /cent(?:er|re)/.test(name) ? {x: 0.5, y: 0.5} : {...fallback};
+    for (const [axis, start, end] of [['x', 'left', 'right'], ['y', 'top', 'bottom']]) {
+        const a = name.includes(start);
+        const b = name.includes(end);
+        if (a || b)
+            alignment[axis] = a === b ? 0.5 : (a ? 0 : 1);
+    }
+    return alignment;
+}
+
+export function imageGeometry(width, height, screenWidth, screenHeight, alignment) {
+    if (!(width > 0 && height > 0)) {
+        width = screenWidth;
+        height = screenHeight;
+    }
+    const scale = Math.min(screenWidth / width, screenHeight / height);
+    width *= scale;
+    height *= scale;
+    return {width, height, x: (screenWidth - width) * alignment.x,
+        y: (screenHeight - height) * alignment.y};
+}
+
 function children(path) {
     const result = [];
     const file = Gio.File.new_for_path(path);

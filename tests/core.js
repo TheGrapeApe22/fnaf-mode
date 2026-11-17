@@ -1,6 +1,7 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import {DEFAULTS, normalizeConfig, readConfig, scanAssets, choose, timeline} from '../extension/core.js';
+import {DEFAULTS, normalizeConfig, readConfig, scanAssets, choose, timeline,
+    imageAlignment, imageGeometry} from '../extension/core.js';
 
 function assert(value, message) {
     if (!value)
@@ -23,6 +24,25 @@ function remove(file) {
 
 const root = GLib.dir_make_tmp('fnaf-test-XXXXXX');
 try {
+    for (const [name, x, y] of [
+        ['mangle.png', 0.5, 0.5], ['mangle-top.png', 0.5, 0],
+        ['mangle_bottom.JPG', 0.5, 1], ['mangleLeft.webp', 0, 0.5],
+        ['MANGLE-TOP-RIGHT.PNG', 1, 0], ['bottomleft.png', 0, 1],
+        ['top-bottom-left-right.png', 0.5, 0.5], ['/top/right/mangle.png', 0.5, 0.5],
+    ]) {
+        const a = imageAlignment(name);
+        assert(a.x === x && a.y === y, `Filename alignment: ${name}`);
+    }
+    const folder = imageAlignment('jumpscare-bottom-right');
+    const inherited = imageAlignment('frame-001.png', folder);
+    const override = imageAlignment('frame-top-002.png', folder);
+    const centered = imageAlignment('frame-center-003.png', folder);
+    assert(inherited.x === 1 && inherited.y === 1 && override.x === 1 && override.y === 0 &&
+        centered.x === 0.5 && centered.y === 0.5, 'Animation folder inheritance and frame overrides');
+    const wide = imageGeometry(200, 100, 1920, 1080, {x: 0.5, y: 1});
+    const tall = imageGeometry(100, 200, 1920, 1080, {x: 1, y: 0});
+    assert(wide.width === 1920 && wide.height === 960 && wide.y === 120, 'Bottom edge, aspect preserved');
+    assert(tall.width === 540 && tall.height === 1080 && tall.x === 1380, 'Right edge, aspect preserved');
     const grouped = normalizeConfig({timing: {intervalMinSeconds: 7, eventMaxSeconds: 6},
         visuals: {flashOpacity: 100, flickerGapMinSeconds: 0.4, flickerGapMaxSeconds: 0.1},
         audio: {enabled: false, maxTracks: 1, volume: 20}, assets: {directory: '~/scares'}});
