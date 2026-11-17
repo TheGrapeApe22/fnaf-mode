@@ -26,7 +26,7 @@ def asset_root():
     assets = config.get('assets', {})
     if not isinstance(assets, dict):
         raise ValueError('assets must be a JSON object')
-    custom = assets.get('directory', config.get('assetDirectory', ''))
+    custom = assets.get('directory', '')
     if not isinstance(custom, str) or (custom and not custom.startswith(('/', '~/'))):
         raise ValueError('assets.directory must be an absolute path or start with ~/')
     return Path(custom).expanduser() if custom else DATA / 'fnaf-mode/assets'

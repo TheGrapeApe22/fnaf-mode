@@ -65,7 +65,7 @@ assert(gap >= 0.49 && gap < 0.8, `Configured 0.5-second gap respected: ${gap}`);
 // A new animation must keep its associated sound silent until the opening flash ends.
 const savedConfig = extension._config();
 const mappingPath = `${savedConfig.assetDirectory}/audio_links.json`;
-GLib.file_set_contents(mappingPath, JSON.stringify({images: {plain: ['a.mp3', 'b.mp3']},
+GLib.file_set_contents(mappingPath, JSON.stringify({images: {'plain.png': ['a.mp3', 'b.mp3']},
     animations: {'converted-right': ['jumpscare.mp3']}}));
 extension._config = () => ({...savedConfig, flashSeconds: 0.4});
 settings.set_boolean('active', true);

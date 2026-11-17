@@ -21,8 +21,6 @@
   },
   "audio": {
     "enabled": true,
-    "minTracks": 2,
-    "maxTracks": 2,
     "volume": 45,
     "systemVolumePercent": 100,
     "fadeInSeconds": 0,

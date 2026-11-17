@@ -141,12 +141,11 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     associated = fixture_assets / 'sounds/jumpscare.mp3'
     shutil.copyfile(assets / 'sounds/a.mp3', associated)
     (fixture_assets / 'audio_links.json').write_text(json.dumps({
-        'images': {'plain': ['a.mp3', 'b.mp3']},
+        'images': {'plain.png': ['a.mp3', 'b.mp3']},
         'animations': {'converted-right': ['a.mp3', 'b.mp3', 'jumpscare.mp3']}
     }))
     config.write_text(json.dumps({'timing': {'intervalMinSeconds': 0.5, 'intervalMaxSeconds': 0.5,
                                            'eventMinSeconds': 2, 'eventMaxSeconds': 2},
-                                 'audio': {'minTracks': 2, 'maxTracks': 2},
                                  'visuals': {'flashSeconds': 0, 'blackoutSeconds': 0, 'fadeBackSeconds': 0},
                                  'assets': {'directory': str(fixture_assets)}}))
     # Load the actual extension with just compositor-specific imports substituted.

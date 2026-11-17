@@ -152,7 +152,7 @@ export default class FnafMode extends Extension {
             if (!soundStarted && elapsed >= phases.imageStart) {
                 soundStarted = true;
                 const audioSeconds = phases.end - phases.imageStart;
-                this._playSounds(visual.sounds ?? assets.sounds, audioSeconds, c, visual.sounds !== null);
+                this._playSounds(visual.sounds, audioSeconds, c);
             }
             const frame = frameIndex(visual, c, phases, elapsed);
             if (frame !== lastFrame && elapsed < phases.imageEnd) {
@@ -209,7 +209,7 @@ export default class FnafMode extends Extension {
         tick();
     }
 
-    _playSounds(files, seconds, c, playAll = false) {
+    _playSounds(files, seconds, c) {
         if (!c.soundEnabled || !files.length)
             return;
         const mpv = GLib.find_program_in_path('mpv');
@@ -217,27 +217,19 @@ export default class FnafMode extends Extension {
             console.warn('[FNAF Mode] Install mpv to enable audio.');
             return;
         }
-        const count = playAll ? files.length : Math.min(files.length,
-            Math.floor(randomBetween(c.soundMinTracks, c.soundMaxTracks + 1)));
-        const available = [...files];
-        for (let i = 0; i < count; i++) {
-            const file = playAll ? available.shift()
-                : available.splice(Math.floor(Math.random() * available.length), 1)[0];
-            const fadeIn = Math.min(c.soundFadeInSeconds, seconds / 2);
-            const fadeOut = Math.min(c.soundFadeOutSeconds, seconds / 2);
-            const filters = [`apad=whole_dur=${seconds}`];
-            if (fadeIn > 0)
-                filters.push(`afade=t=in:st=0:d=${fadeIn}`);
-            if (fadeOut > 0)
-                filters.push(`afade=t=out:st=${seconds - fadeOut}:d=${fadeOut}`);
-            const argv = [mpv, '--no-config', '--no-video', '--audio-display=no',
-                '--no-terminal', '--input-terminal=no',
-                `--length=${seconds}`, `--volume=${c.soundVolume}`];
-            if (filters.length)
-                argv.push(`--af=lavfi=[${filters.join(',')}]`);
-            argv.push('--', file);
+        const fadeIn = Math.min(c.soundFadeInSeconds, seconds / 2);
+        const fadeOut = Math.min(c.soundFadeOutSeconds, seconds / 2);
+        const filters = [`apad=whole_dur=${seconds}`];
+        if (fadeIn > 0)
+            filters.push(`afade=t=in:st=0:d=${fadeIn}`);
+        if (fadeOut > 0)
+            filters.push(`afade=t=out:st=${seconds - fadeOut}:d=${fadeOut}`);
+        const argv = [mpv, '--no-config', '--no-video', '--audio-display=no',
+            '--no-terminal', '--input-terminal=no', `--length=${seconds}`,
+            `--volume=${c.soundVolume}`, `--af=lavfi=[${filters.join(',')}]`];
+        for (const file of files) {
             try {
-                const player = Gio.Subprocess.new(argv,
+                const player = Gio.Subprocess.new([...argv, '--', file],
                     Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE);
                 const players = this._players;
                 players.add(player);

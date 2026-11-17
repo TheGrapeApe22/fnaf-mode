@@ -10,7 +10,7 @@ export const DEFAULTS = Object.freeze({
     flickerBurstMinSeconds: 0.12, flickerBurstMaxSeconds: 0.28,
     blackoutSeconds: 0.2, fadeBackSeconds: 0.65,
     imageOpacity: 255, animationFps: 12,
-    soundEnabled: true, soundMinTracks: 1, soundMaxTracks: 2,
+    soundEnabled: true,
     soundVolume: 45, soundFadeInSeconds: 0.3, soundFadeOutSeconds: 0.65,
     assetDirectory: '',
 });
@@ -22,9 +22,8 @@ export function normalizeConfig(raw = {}) {
         if (section in raw && (!raw[section] || typeof raw[section] !== 'object' || Array.isArray(raw[section])))
             throw new Error(`${section} must be a JSON object`);
     }
-    // Accept old flat configs during migration; grouped settings take precedence.
-    const input = {...raw, ...raw.timing, ...raw.visuals};
-    for (const key of ['enabled', 'minTracks', 'maxTracks', 'volume', 'fadeInSeconds', 'fadeOutSeconds']) {
+    const input = {...raw.timing, ...raw.visuals};
+    for (const key of ['enabled', 'volume', 'fadeInSeconds', 'fadeOutSeconds']) {
         if (raw.audio && key in raw.audio)
             input[`sound${key[0].toUpperCase()}${key.slice(1)}`] = raw.audio[key];
     }
@@ -52,19 +51,21 @@ export function normalizeConfig(raw = {}) {
     c.flashOpacity = Math.min(255, c.flashOpacity);
     c.imageOpacity = Math.min(255, c.imageOpacity);
     c.soundVolume = Math.min(100, c.soundVolume);
-    c.soundMinTracks = Math.min(2, Math.max(1, Math.floor(c.soundMinTracks)));
-    c.soundMaxTracks = Math.min(2, Math.max(c.soundMinTracks, Math.floor(c.soundMaxTracks)));
     if (c.assetDirectory && !c.assetDirectory.startsWith('/') && !c.assetDirectory.startsWith('~/'))
         throw new Error('assets.directory must be an absolute path or start with ~/');
     return c;
 }
 
-export function readConfig(path) {
+function readJson(path) {
     const file = Gio.File.new_for_path(path);
     if (!file.query_exists(null))
-        return normalizeConfig();
+        return {};
     const [, bytes] = file.load_contents(null);
-    return normalizeConfig(JSON.parse(new TextDecoder().decode(bytes)));
+    return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+export function readConfig(path) {
+    return normalizeConfig(readJson(path));
 }
 
 export function randomBetween(min, max) {
@@ -122,11 +123,7 @@ function children(path) {
 
 const imagePattern = /\.(png|jpe?g|webp)$/i;
 export function readAudioLinks(root) {
-    const file = Gio.File.new_for_path(GLib.build_filenamev([root, 'audio_links.json']));
-    if (!file.query_exists(null))
-        return null;
-    const [, bytes] = file.load_contents(null);
-    const raw = JSON.parse(new TextDecoder().decode(bytes));
+    const raw = readJson(GLib.build_filenamev([root, 'audio_links.json']));
     if (!raw || typeof raw !== 'object' || Array.isArray(raw))
         throw new Error('audio_links.json must be an object');
     for (const section of ['images', 'animations']) {
@@ -153,7 +150,7 @@ export function scanAssets(root, audioLinks = readAudioLinks(root)) {
             continue;
         const entries = children(folder.path);
         const frameDirectory = entries.find(f => f.name === 'frames' && f.type === Gio.FileType.DIRECTORY);
-        // Prefer the new layout; retain support for older folders with frames at the root.
+        // Both direct frames and the importer's frames/ layout are supported.
         const frames = (frameDirectory ? children(frameDirectory.path) : entries)
             .filter(f => regular(f) && /\.(png|jpe?g|webp|gif)$/i.test(f.name));
         if (frames.length)
@@ -164,14 +161,9 @@ export function scanAssets(root, audioLinks = readAudioLinks(root)) {
     const byName = new Map(sounds.map(path => [GLib.path_get_basename(path), path]));
     const warnings = [];
     for (const visual of visuals) {
-        visual.sounds = null; // No mapping file: retain random global-track behavior.
-        if (audioLinks === null)
-            continue;
         const name = GLib.path_get_basename(visual.id);
         const section = audioLinks[visual.type === 'image' ? 'images' : 'animations'] ?? {};
-        const stem = visual.type === 'image' ? name.replace(imagePattern, '') : name;
-        const tracks = Object.hasOwn(section, name) ? section[name]
-            : (Object.hasOwn(section, stem) ? section[stem] : []);
+        const tracks = Object.hasOwn(section, name) ? section[name] : [];
         visual.sounds = [];
         for (const track of new Set(tracks)) {
             if (byName.has(track))
@@ -180,7 +172,7 @@ export function scanAssets(root, audioLinks = readAudioLinks(root)) {
                 warnings.push(`audio_links.json: ${name} references missing sounds/${track}`);
         }
     }
-    return {visuals, sounds, warnings};
+    return {visuals, warnings};
 }
 
 // All phases, including the fade to desktop, fit inside the chosen event duration.

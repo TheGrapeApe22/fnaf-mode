@@ -45,29 +45,28 @@ try {
     assert(tall.width === 540 && tall.height === 1080 && tall.x === 1380, 'Right edge, aspect preserved');
     const grouped = normalizeConfig({timing: {intervalMinSeconds: 7, eventMaxSeconds: 6},
         visuals: {flashOpacity: 100, flickerGapMinSeconds: 0.4, flickerGapMaxSeconds: 0.1},
-        audio: {enabled: false, maxTracks: 1, volume: 20}, assets: {directory: '~/scares'}});
+        audio: {enabled: false, volume: 20}, assets: {directory: '~/scares'}});
     assert(grouped.intervalMinSeconds === 7 && grouped.eventMaxSeconds === 6 &&
         grouped.flashOpacity === 100 && grouped.soundVolume === 20 &&
-        !grouped.soundEnabled && grouped.soundMaxTracks === 1 && grouped.assetDirectory === '~/scares',
+        !grouped.soundEnabled && grouped.assetDirectory === '~/scares',
     'Grouped config loads timing, visuals, audio and assets');
     assert(grouped.flickerGapMaxSeconds === 0.4, 'Burst gap bounds');
     let badSection = false;
     try { normalizeConfig({visuals: null}); } catch (_) { badSection = true; }
     assert(badSection, 'Invalid config sections rejected');
-    const c = normalizeConfig({intervalMinSeconds: 9, intervalMaxSeconds: 2,
-        animationFps: 999, soundMinTracks: 2, soundMaxTracks: 1,
-        fadeBackSeconds: Infinity, flashOpacity: -20});
+    const c = normalizeConfig({timing: {intervalMinSeconds: 9, intervalMaxSeconds: 2},
+        visuals: {animationFps: 999, fadeBackSeconds: Infinity, flashOpacity: -20}});
     assert(c.intervalMaxSeconds === 9 && c.animationFps === 30, 'Timing bounds');
-    assert(c.soundMaxTracks === 2 && c.flashOpacity === 0, 'Track/opacity bounds');
+    assert(c.flashOpacity === 0, 'Opacity bounds');
     assert(c.fadeBackSeconds === DEFAULTS.fadeBackSeconds, 'Non-finite values rejected');
     for (const duration of [0.5, 2, 4, 10]) {
-        const t = timeline(normalizeConfig({flashSeconds: 99}), duration);
+        const t = timeline(normalizeConfig({visuals: {flashSeconds: 99}}), duration);
         assert(t.flashEnd <= t.flickerEnd && t.flickerEnd < t.imageEnd &&
             t.imageEnd <= t.blackoutEnd && t.blackoutEnd <= t.end, 'Phase order');
         assert(t.end === duration, 'Whole event fits requested duration');
     }
     const animation = {frames: Array(24)};
-    const animationConfig = normalizeConfig({eventMinSeconds: 90, eventMaxSeconds: 90});
+    const animationConfig = normalizeConfig({timing: {eventMinSeconds: 90, eventMaxSeconds: 90}});
     const phases = animationTimeline(animationConfig, animation.frames.length);
     assert(Math.abs(phases.imageEnd - phases.imageStart - 2) < 0.0001,
         'Animation runs for frame count / FPS, independent of still-image event duration');
@@ -87,7 +86,7 @@ try {
     write(`${root}/sounds/a.mp3`);
     write(`${root}/sounds/b.MP3`);
     const assets = scanAssets(root);
-    assert(assets.visuals.length === 3 && assets.sounds.length === 2, 'Asset discovery');
+    assert(assets.visuals.length === 3, 'Asset discovery');
     assert(assets.visuals[2].frames[0].endsWith('frame-2.png'), 'Natural frame order');
     write(`${root}/animations/z-bundle/frames/frame-10.gif`);
     write(`${root}/animations/z-bundle/frames/frame-2.png`);
@@ -102,16 +101,16 @@ try {
     assert(bundle.type === 'animation' && bundle.frames.length === 2 &&
         bundle.frames[0].endsWith('/frames/frame-2.png'),
     'Nested frames, GIF support, natural order and no root duplicates');
-    assert(named.sounds === null && assets.visuals[0].type === 'image',
-        'No mapping file retains random global audio; folder MP3s are ignored');
+    assert(named.sounds.length === 0 && assets.visuals[0].type === 'image',
+        'No mapping file is silent; folder MP3s are ignored');
     write(`${root}/sounds/jumpscare.mp3`);
-    const links = {images: {a: ['a.mp3', 'b.MP3'], 'b.JPG': []},
+    const links = {images: {'a.png': ['a.mp3', 'b.MP3'], 'b.JPG': []},
         animations: {'z-bundle': ['a.mp3', 'b.MP3', 'jumpscare.mp3', 'a.mp3'],
             'zz-named': ['missing.mp3']}};
     write(`${root}/audio_links.json`, JSON.stringify(links));
     const mapped = scanAssets(root);
     assert(mapped.visuals.find(v => v.id.endsWith('/a.png')).sounds.length === 2,
-        'Image stems resolve their exact listed sounds');
+        'Full image filenames resolve their exact listed sounds');
     assert(mapped.visuals.find(v => v.id.endsWith('/b.JPG')).sounds.length === 0 &&
         mapped.visuals.find(v => v.id.endsWith('/scare')).sounds.length === 0,
         'Explicit empty and omitted mappings are silent');
@@ -123,6 +122,10 @@ try {
     write(`${root}/audio_links.json`, JSON.stringify(links));
     assert(scanAssets(root).visuals.find(v => v.id.endsWith('/z-bundle')).sounds[0].endsWith('/b.MP3'),
         'Mapping edits are read dynamically');
+    links.images = {a: ['a.mp3'], 'b.jpg': ['b.MP3']};
+    write(`${root}/audio_links.json`, JSON.stringify(links));
+    assert(scanAssets(root).visuals.filter(v => v.type === 'image').every(v => v.sounds.length === 0),
+        'Stems and mismatched filename casing do not resolve');
     for (const invalid of ['{broken', '[]', '{"images":null}', '{"animations":{"scare":"a.mp3"}}']) {
         write(`${root}/audio_links.json`, invalid);
         let rejected = false;
@@ -134,7 +137,7 @@ try {
         assert(choose(assets.visuals, assets.visuals[0].id).id !== assets.visuals[0].id, 'No repeat');
     assert(choose([assets.visuals[0]], assets.visuals[0].id) === assets.visuals[0], 'Single visual');
     assert(scanAssets(`${root}/missing`).visuals.length === 0, 'Missing library');
-    write(`${root}/config.json`, '{"soundEnabled": false}');
+    write(`${root}/config.json`, '{"audio": {"enabled": false}}');
     assert(!readConfig(`${root}/config.json`).soundEnabled, 'Read supplied config');
     write(`${root}/config.json`, '{broken');
     let rejected = false;

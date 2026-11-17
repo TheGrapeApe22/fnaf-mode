@@ -4,8 +4,8 @@ A GNOME Shell 50 extension for Ubuntu 26.04 / Wayland. `fnaf-mode` toggles a
 click-through overlay on the primary screen, including over fullscreen apps.
 Your apps retain keyboard focus and mouse input.
 
-With the current repository config, events follow **2 seconds of normal desktop
-time**. Still-image events last **4 seconds**; animations play once at
+Events alternate with normal desktop time, controlled by `timing` in `config.json`.
+Still-image duration is also configurable; animations play once at
 `visuals.animationFps`, then go black and fade back to desktop. Opening flashes
 and repeated flicker bursts overlay the images. A different visual is chosen each
 time when at least two exist. `assets/audio_links.json` selects the complete set
@@ -95,8 +95,8 @@ edits and deletes files absent from the repository:
 Each still and each animation subfolder counts as one visual. Frames are sorted
 naturally by filename and play **once** at `visuals.animationFps`. Still images
 support PNG, JPEG and WebP. Animation frames also support individual GIF images
-(their first frame is used). Older animation folders with frames directly inside
-the animation folder still work; when `frames/` exists, it takes precedence.
+(their first frame is used). Frames can live directly inside the animation folder
+or in a `frames/` subfolder; when `frames/` exists, it takes precedence.
 Use reasonably sized frames (roughly your screen resolution) and short animations;
 these are rendered inside GNOME Shell. Images are fitted without cropping.
 Transparent images reveal your desktop; opaque images cover it.
@@ -149,13 +149,13 @@ Keep **all MP3s in `sounds/`**. Map each visual to its complete track list in
     "mangle_jumpscare_1": ["ambience_fnaf_2.mp3", "mangle.mp3", "jumpscare_fnaf_2.mp3"]
   },
   "images": {
-    "mangle_bottom": ["ambience_fnaf_2.mp3", "mangle.mp3"]
+    "mangle_bottom.webp": ["ambience_fnaf_2.mp3", "mangle.mp3"]
   }
 }
 ```
 
-Animation keys are folder names. Image keys are filenames without their extension;
-full filenames such as `mangle_bottom.webp` also work and take precedence. Names
+Animation keys are folder names. Image keys must be full filenames, including the
+extension, such as `mangle_bottom.webp`. Names
 are case-sensitive. Each listed sound filename resolves directly inside `sounds/`.
 Every listed track plays together, even when there are more than two. The list
 includes ambient tracks as well as jumpscare audio; no additional random tracks
@@ -166,8 +166,8 @@ MP3s placed inside animation folders are no longer used.
 The installed mapping is re-read before every event. Editing it changes the next
 event without toggling or logging out. If JSON is temporarily invalid while being
 edited, the extension logs the error and retains the last valid mapping (or stays
-silent if none has loaded yet). Removing the mapping file restores the older
-random-global-audio behavior using `audio.minTracks` / `maxTracks`.
+silent if none has loaded yet). A missing mapping file makes all visuals silent.
+The JSON arrays are the only source of track selection and track counts.
 
 For edits to this repository's mapping, run `./deploy.sh` to copy it into the
 installed library. Once this version of the extension is loaded, changes to the
@@ -214,7 +214,6 @@ The file has four sections: `timing`, `visuals`, `audio`, and `assets`.
 | `visuals.blackoutSeconds`, `fadeBackSeconds` | Black screen, then return to desktop |
 | `visuals.imageOpacity`, `animationFps` | Visual opacity (0–255) and frame rate (1–30) |
 | `audio.enabled` | Allow audio |
-| `audio.minTracks`, `maxTracks` | Random track count (1–2) only when audio_links.json is absent |
 | `audio.volume` | Per-track mpv volume (0–100) |
 | `audio.systemVolumePercent` | System output volume set once by on/toggle-on (0–100; default 50) |
 | `audio.fadeInSeconds`, `fadeOutSeconds` | Audio fades |
@@ -229,7 +228,7 @@ to the installed config take effect without deployment; edits to the repository
 config require `./deploy.sh`. Toggle off/on to immediately start a new wait using
 edited timing. Invalid config logs an error and retains the last good values.
 Missing keys use defaults (5–50 seconds between events, 2–4 seconds per event).
-Old flat configs still load. If you shorten still-image events, transition phases
+Use the grouped config format shown in `config.json`. If you shorten still-image events, transition phases
 scale down to leave time for the image. Set `visuals.flashOpacity` to 0 to suppress the white
 flash.
 

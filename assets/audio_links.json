@@ -4,10 +4,10 @@
         "mangle_jumpscare_2": ["ambience_fnaf_2.mp3", "mangle.mp3", "jumpscare_fnaf_2.mp3"]
     },
     "images": {
-        "mangle_bottom": ["ambience_fnaf_2.mp3", "mangle.mp3"],
-        "mangle_left": ["ambience_fnaf_2.mp3", "mangle.mp3"],
-        "mangle_top_alive": ["ambience_fnaf_2.mp3", "mangle.mp3"],
-        "mangle_top_dark": ["ambience_fnaf_2.mp3", "mangle.mp3"],
-        "mangle_top_mangled": ["ambience_fnaf_2.mp3", "mangle.mp3"]
+        "mangle_bottom.webp": ["ambience_fnaf_2.mp3", "mangle.mp3"],
+        "mangle_left.webp": ["ambience_fnaf_2.mp3", "mangle.mp3"],
+        "mangle_top_alive.webp": ["ambience_fnaf_2.mp3", "mangle.mp3"],
+        "mangle_top_dark.webp": ["ambience_fnaf_2.mp3", "mangle.mp3"],
+        "mangle_top_mangled.webp": ["ambience_fnaf_2.mp3", "mangle.mp3"]
     }
 }
