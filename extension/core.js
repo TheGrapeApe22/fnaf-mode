@@ -121,12 +121,32 @@ function children(path) {
 }
 
 const imagePattern = /\.(png|jpe?g|webp)$/i;
-export function scanAssets(root) {
+export function readAudioLinks(root) {
+    const file = Gio.File.new_for_path(GLib.build_filenamev([root, 'audio_links.json']));
+    if (!file.query_exists(null))
+        return null;
+    const [, bytes] = file.load_contents(null);
+    const raw = JSON.parse(new TextDecoder().decode(bytes));
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+        throw new Error('audio_links.json must be an object');
+    for (const section of ['images', 'animations']) {
+        const entries = Object.hasOwn(raw, section) ? raw[section] : {};
+        if (!entries || typeof entries !== 'object' || Array.isArray(entries))
+            throw new Error(`audio_links.json ${section} must be an object`);
+        for (const [name, tracks] of Object.entries(entries)) {
+            if (!Array.isArray(tracks) || tracks.some(track => typeof track !== 'string'))
+                throw new Error(`audio_links.json ${section}.${name} must be an array of sound filenames`);
+        }
+    }
+    return raw;
+}
+
+export function scanAssets(root, audioLinks = readAudioLinks(root)) {
     const visuals = [];
     const regular = f => f.type === Gio.FileType.REGULAR;
     for (const f of children(GLib.build_filenamev([root, 'images']))) {
         if (regular(f) && imagePattern.test(f.name))
-            visuals.push({id: f.path, type: 'image', frames: [f.path], audio: null});
+            visuals.push({id: f.path, type: 'image', frames: [f.path]});
     }
     for (const folder of children(GLib.build_filenamev([root, 'animations']))) {
         if (folder.type !== Gio.FileType.DIRECTORY)
@@ -136,15 +156,31 @@ export function scanAssets(root) {
         // Prefer the new layout; retain support for older folders with frames at the root.
         const frames = (frameDirectory ? children(frameDirectory.path) : entries)
             .filter(f => regular(f) && /\.(png|jpe?g|webp|gif)$/i.test(f.name));
-        const tracks = entries.filter(f => regular(f) && /\.mp3$/i.test(f.name));
-        const audio = tracks.find(f => f.name.toLowerCase() === 'audio.mp3') ?? tracks[0];
         if (frames.length)
-            visuals.push({id: folder.path, type: 'animation', frames: frames.map(f => f.path),
-                audio: audio?.path ?? null});
+            visuals.push({id: folder.path, type: 'animation', frames: frames.map(f => f.path)});
     }
     const sounds = children(GLib.build_filenamev([root, 'sounds']))
         .filter(f => regular(f) && /\.mp3$/i.test(f.name)).map(f => f.path);
-    return {visuals, sounds};
+    const byName = new Map(sounds.map(path => [GLib.path_get_basename(path), path]));
+    const warnings = [];
+    for (const visual of visuals) {
+        visual.sounds = null; // No mapping file: retain random global-track behavior.
+        if (audioLinks === null)
+            continue;
+        const name = GLib.path_get_basename(visual.id);
+        const section = audioLinks[visual.type === 'image' ? 'images' : 'animations'] ?? {};
+        const stem = visual.type === 'image' ? name.replace(imagePattern, '') : name;
+        const tracks = Object.hasOwn(section, name) ? section[name]
+            : (Object.hasOwn(section, stem) ? section[stem] : []);
+        visual.sounds = [];
+        for (const track of new Set(tracks)) {
+            if (byName.has(track))
+                visual.sounds.push(byName.get(track));
+            else
+                warnings.push(`audio_links.json: ${name} references missing sounds/${track}`);
+        }
+    }
+    return {visuals, sounds, warnings};
 }
 
 // All phases, including the fade to desktop, fit inside the chosen event duration.

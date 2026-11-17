@@ -1,31 +1,32 @@
-Make one folder per jumpscare:
+Make one folder per jumpscare. Frames can be directly inside it:
 
-mangle-bottom-left/
+mangle_jumpscare_1/
+  frame-00001.gif
+  frame-00002.gif
+
+Or in a frames/ subfolder (the layout created by import-gif):
+
+mangle_jumpscare_2/
   frames/
     frame-00001.png
     frame-00002.png
-    ...
-  audio.mp3
 
-Frames sort naturally by filename and play ONCE at visuals.animationFps (default
-12). PNG, JPEG, WebP and individual GIF frame files are supported. Filename delay
-hints are ignored; playback speed comes from the configured frame rate.
+Frames play ONCE in natural filename order at visuals.animationFps (default 12).
+PNG, JPEG, WebP and individual GIF frames are supported. Filename delay hints are
+ignored; playback speed comes from the configured frame rate. A frames/ subfolder
+takes precedence over root-level frames.
 
-The first animation frame and its associated MP3 start together after the opening
-flash. After the last frame, the screen goes black and fades back to desktop;
-audio fades out with that ending. The configured event duration applies only to
-still images; animations use frame count / FPS plus the opening/ending effects.
+All audio belongs in ../sounds/. In ../audio_links.json, map this animation's
+folder name under "animations" to its complete sound list. Every listed track
+plays together: include both ambient tracks and the jumpscare track. No extra
+random tracks are added. MP3s inside animation folders are not used.
 
-An MP3 with any filename works; audio.mp3 takes priority if several are present.
-Use one MP3 per folder. The local MP3 plays alongside the global sounds/ tracks, not in their place.
-Without a local MP3, the global tracks still play.
-Older folders with frames directly in the animation folder still work. A frames/
-subfolder takes precedence over root-level frame files.
+After the opening flash, the animation and all linked sounds start together.
+After the last frame, the screen goes black and fades back; audio fades out with
+that ending. Animation duration comes from frame count / FPS plus the transitions.
 
-Hidden folders are ignored. Keep images at reasonable sizes; the shell renders them.
 For GIF imports: fnaf-mode import-gif /path/to/jumpscare.gif mangle-jumpscare
-This creates mangle-jumpscare/frames/; add your MP3 next to frames/ afterward.
+Then add "mangle-jumpscare" to the "animations" section in ../audio_links.json.
 
-Folder names with top/bottom/left/right provide screen alignment, e.g.
-mangle-bottom-left/. Frame filenames can override the folder's alignment hints.
-Use center/centre in a frame filename to reset alignment to the center.
+Folder names containing top/bottom/left/right set screen alignment. Individual
+frame names can override those hints; center/centre resets alignment to center.

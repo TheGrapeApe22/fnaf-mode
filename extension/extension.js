@@ -6,7 +6,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {DEFAULTS, readConfig, scanAssets, choose, randomBetween, timeline,
-    animationTimeline, frameIndex, imageAlignment, imageGeometry} from './core.js';
+    readAudioLinks, animationTimeline, frameIndex, imageAlignment, imageGeometry} from './core.js';
 
 export default class FnafMode extends Extension {
     enable() {
@@ -83,7 +83,17 @@ export default class FnafMode extends Extension {
             ? (c.assetDirectory.startsWith('~/')
                 ? GLib.build_filenamev([GLib.get_home_dir(), c.assetDirectory.slice(2)]) : c.assetDirectory)
             : GLib.build_filenamev([GLib.get_user_data_dir(), 'fnaf-mode', 'assets']);
-        const assets = scanAssets(root);
+        let links;
+        try {
+            links = readAudioLinks(root);
+            this._lastAudioLinks = {root, links};
+        } catch (error) {
+            console.warn(`[FNAF Mode] Invalid audio_links.json: ${error.message}; keeping last valid mapping.`);
+            links = this._lastAudioLinks?.root === root ? this._lastAudioLinks.links : {};
+        }
+        const assets = scanAssets(root, links);
+        for (const warning of assets.warnings)
+            console.warn(`[FNAF Mode] ${warning}`);
         const visual = choose(assets.visuals, this._previousVisual);
         if (!visual) {
             if (!this._warnedEmpty) {
@@ -142,9 +152,7 @@ export default class FnafMode extends Extension {
             if (!soundStarted && elapsed >= phases.imageStart) {
                 soundStarted = true;
                 const audioSeconds = phases.end - phases.imageStart;
-                this._playSounds(assets.sounds, audioSeconds, c);
-                if (visual.audio)
-                    this._playSounds([visual.audio], audioSeconds, c);
+                this._playSounds(visual.sounds ?? assets.sounds, audioSeconds, c, visual.sounds !== null);
             }
             const frame = frameIndex(visual, c, phases, elapsed);
             if (frame !== lastFrame && elapsed < phases.imageEnd) {
@@ -201,7 +209,7 @@ export default class FnafMode extends Extension {
         tick();
     }
 
-    _playSounds(files, seconds, c) {
+    _playSounds(files, seconds, c, playAll = false) {
         if (!c.soundEnabled || !files.length)
             return;
         const mpv = GLib.find_program_in_path('mpv');
@@ -209,11 +217,12 @@ export default class FnafMode extends Extension {
             console.warn('[FNAF Mode] Install mpv to enable audio.');
             return;
         }
-        const count = Math.min(files.length,
+        const count = playAll ? files.length : Math.min(files.length,
             Math.floor(randomBetween(c.soundMinTracks, c.soundMaxTracks + 1)));
         const available = [...files];
         for (let i = 0; i < count; i++) {
-            const file = available.splice(Math.floor(Math.random() * available.length), 1)[0];
+            const file = playAll ? available.shift()
+                : available.splice(Math.floor(Math.random() * available.length), 1)[0];
             const fadeIn = Math.min(c.soundFadeInSeconds, seconds / 2);
             const fadeOut = Math.min(c.soundFadeOutSeconds, seconds / 2);
             const filters = [`apad=whole_dur=${seconds}`];
@@ -256,5 +265,6 @@ export default class FnafMode extends Extension {
         this._settings = null;
         this._lastConfig = null;
         this._previousVisual = null;
+        this._lastAudioLinks = null;
     }
 }

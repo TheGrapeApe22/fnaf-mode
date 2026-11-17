@@ -1,7 +1,7 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import {DEFAULTS, normalizeConfig, readConfig, scanAssets, choose, timeline,
-    animationTimeline, frameIndex, imageAlignment, imageGeometry} from '../extension/core.js';
+    readAudioLinks, animationTimeline, frameIndex, imageAlignment, imageGeometry} from '../extension/core.js';
 
 function assert(value, message) {
     if (!value)
@@ -100,11 +100,35 @@ try {
     const bundle = bundled.find(v => v.id.endsWith('/z-bundle'));
     const named = bundled.find(v => v.id.endsWith('/zz-named'));
     assert(bundle.type === 'animation' && bundle.frames.length === 2 &&
-        bundle.frames[0].endsWith('/frames/frame-2.png') && bundle.audio.endsWith('/audio.mp3'),
-    'Nested frames, GIF support, natural order, canonical audio preference and no root duplicates');
-    assert(named.audio.endsWith('/FNAF 2 Jumpscare Sound.mp3'), 'Descriptive MP3 names supported');
-    assert(assets.visuals[2].audio === null && assets.visuals[0].type === 'image',
-        'Legacy animation folders and still images retain global sound fallback');
+        bundle.frames[0].endsWith('/frames/frame-2.png'),
+    'Nested frames, GIF support, natural order and no root duplicates');
+    assert(named.sounds === null && assets.visuals[0].type === 'image',
+        'No mapping file retains random global audio; folder MP3s are ignored');
+    write(`${root}/sounds/jumpscare.mp3`);
+    const links = {images: {a: ['a.mp3', 'b.MP3'], 'b.JPG': []},
+        animations: {'z-bundle': ['a.mp3', 'b.MP3', 'jumpscare.mp3', 'a.mp3'],
+            'zz-named': ['missing.mp3']}};
+    write(`${root}/audio_links.json`, JSON.stringify(links));
+    const mapped = scanAssets(root);
+    assert(mapped.visuals.find(v => v.id.endsWith('/a.png')).sounds.length === 2,
+        'Image stems resolve their exact listed sounds');
+    assert(mapped.visuals.find(v => v.id.endsWith('/b.JPG')).sounds.length === 0 &&
+        mapped.visuals.find(v => v.id.endsWith('/scare')).sounds.length === 0,
+        'Explicit empty and omitted mappings are silent');
+    assert(mapped.visuals.find(v => v.id.endsWith('/z-bundle')).sounds.length === 3,
+        'All mapped animation tracks resolve, duplicates removed');
+    assert(mapped.visuals.find(v => v.id.endsWith('/zz-named')).sounds.length === 0 &&
+        mapped.warnings.length === 1, 'Missing sound skipped with a diagnostic');
+    links.animations['z-bundle'] = ['b.MP3'];
+    write(`${root}/audio_links.json`, JSON.stringify(links));
+    assert(scanAssets(root).visuals.find(v => v.id.endsWith('/z-bundle')).sounds[0].endsWith('/b.MP3'),
+        'Mapping edits are read dynamically');
+    for (const invalid of ['{broken', '[]', '{"images":null}', '{"animations":{"scare":"a.mp3"}}']) {
+        write(`${root}/audio_links.json`, invalid);
+        let rejected = false;
+        try { readAudioLinks(root); } catch (_) { rejected = true; }
+        assert(rejected, 'Invalid mapping rejected');
+    }
     assert(choose([], null) === null, 'Empty library');
     for (let i = 0; i < 50; i++)
         assert(choose(assets.visuals, assets.visuals[0].id).id !== assets.visuals[0].id, 'No repeat');

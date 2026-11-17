@@ -111,7 +111,7 @@ def import_gif(source, name, fps):
         # Rename within the same filesystem so the shell never sees partial output.
         Path(tmp).rename(target)
     print(f'Imported {target}; set visuals.animationFps to {fps} in {CONFIG}')
-    print(f'Optional associated sound: {target / "audio.mp3"}')
+    print(f'Link sounds/ tracks in {asset_root() / "audio_links.json"} under animations.{name}')
 
 
 def main():

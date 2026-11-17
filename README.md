@@ -8,9 +8,9 @@ With the current repository config, events follow **2 seconds of normal desktop
 time**. Still-image events last **4 seconds**; animations play once at
 `visuals.animationFps`, then go black and fade back to desktop. Opening flashes
 and repeated flicker bursts overlay the images. A different visual is chosen each
-time when at least two exist. An animation's associated MP3 starts with its first
-frame and fades out with the ending, alongside the random global tracks.
-Each event also plays one or two random tracks from the global sound folder. Supply your own media; nothing is downloaded.
+time when at least two exist. `assets/audio_links.json` selects the complete set
+of tracks for each image or animation. All listed tracks start together with the
+visual and fade out with the ending. Supply your own media; nothing is downloaded.
 Nothing controls physical lights or brightness.
 
 ## Install
@@ -74,23 +74,22 @@ edits and deletes files absent from the repository:
 
 ```text
 ~/.local/share/fnaf-mode/assets/
+  audio_links.json
   images/
-    mangle-1.png
-    mangle-2.jpg
+    mangle_bottom.webp
+    mangle_left.webp
   animations/
-    jumpscare-one/
+    mangle_jumpscare_1/
+      frame-00001.gif
+      frame-00002.gif
+    mangle_jumpscare_2/
       frames/
-        frame-00001.png
-        frame-00002.png
-      audio.mp3
-    jumpscare-two/
-      frames/
-        001.gif
-        002.gif
-      FNAF 2 Jumpscare Sound.mp3
+        001.png
+        002.png
   sounds/
-    static.mp3
-    scream.mp3
+    ambience_fnaf_2.mp3
+    mangle.mp3
+    jumpscare_fnaf_2.mp3
 ```
 
 Each still and each animation subfolder counts as one visual. Frames are sorted
@@ -137,26 +136,48 @@ fnaf-mode import-gif ~/Downloads/another.gif another-jumpscare --fps 20
 Import keeps your source GIF intact, refuses to overwrite an existing animation,
 and caps output to 900 frames and 1280 pixels per dimension. GIF frame timing is
 resampled to the selected fixed frame rate. Frames become visible to the extension
-only after conversion completes. Import creates `<name>/frames/`; put an associated
-MP3 beside `frames/` afterward. Multi-frame GIFs are converted rather than played
+only after conversion completes. Import creates `<name>/frames/`; add its sound
+mapping to `audio_links.json` afterward. Multi-frame GIFs are converted rather than played
 directly; individual GIF files already extracted as frames can be used as-is.
 
-Put each animation's MP3 beside its `frames/` directory. `audio.mp3` is preferred
-(case-insensitive). A descriptive filename also works: if `audio.mp3` is absent,
-the first MP3 in natural filename order is used. Keep one MP3 per animation for
-clarity. This track plays **in addition to** the global random tracks.
+Keep **all MP3s in `sounds/`**. Map each visual to its complete track list in
+`assets/audio_links.json`, for example:
 
-Every event chooses one or two distinct tracks from `sounds/`, according to
-`audio.minTracks` / `maxTracks`. With both set to 2 and an associated MP3 present,
-all three tracks start together with the animation. Without an associated MP3,
-the event still plays its global tracks. With an empty global sound folder, the
-associated MP3 can play alone. `audio.enabled` and volume/fade settings apply to
-all tracks.
+```json
+{
+  "animations": {
+    "mangle_jumpscare_1": ["ambience_fnaf_2.mp3", "mangle.mp3", "jumpscare_fnaf_2.mp3"]
+  },
+  "images": {
+    "mangle_bottom": ["ambience_fnaf_2.mp3", "mangle.mp3"]
+  }
+}
+```
+
+Animation keys are folder names. Image keys are filenames without their extension;
+full filenames such as `mangle_bottom.webp` also work and take precedence. Names
+are case-sensitive. Each listed sound filename resolves directly inside `sounds/`.
+Every listed track plays together, even when there are more than two. The list
+includes ambient tracks as well as jumpscare audio; no additional random tracks
+are added. Repeated filenames are played once. An empty list or an omitted visual
+is silent. Missing sound files are skipped and logged, while other tracks play.
+MP3s placed inside animation folders are no longer used.
+
+The installed mapping is re-read before every event. Editing it changes the next
+event without toggling or logging out. If JSON is temporarily invalid while being
+edited, the extension logs the error and retains the last valid mapping (or stays
+silent if none has loaded yet). Removing the mapping file restores the older
+random-global-audio behavior using `audio.minTracks` / `maxTracks`.
+
+For edits to this repository's mapping, run `./deploy.sh` to copy it into the
+installed library. Once this version of the extension is loaded, changes to the
+mapping alone do not require another logout. `audio.enabled`, volume and fades
+apply to every mapped track.
 
 Animation playback lasts **frame count ÷ animationFps**. The opening flash happens
 first; the first animation frame and its audio start together after it. After the
 last frame's interval, the image immediately goes black and fades to desktop.
-The audio continues into that ending and fades out. Animation events ignore
+All mapped audio tracks continue into that ending and fade out. Animation events ignore
 `timing.eventMinSeconds` / `eventMaxSeconds`; still images continue using them.
 For example, 24 frames at 12 FPS play for 2 seconds, plus the opening flash,
 blackout, and return fade. Frame filenames such as `delay-0.05s` do not set timing;
@@ -193,7 +214,7 @@ The file has four sections: `timing`, `visuals`, `audio`, and `assets`.
 | `visuals.blackoutSeconds`, `fadeBackSeconds` | Black screen, then return to desktop |
 | `visuals.imageOpacity`, `animationFps` | Visual opacity (0–255) and frame rate (1–30) |
 | `audio.enabled` | Allow audio |
-| `audio.minTracks`, `maxTracks` | Number of random global MP3s (1–2), plus any associated animation track |
+| `audio.minTracks`, `maxTracks` | Random track count (1–2) only when audio_links.json is absent |
 | `audio.volume` | Per-track mpv volume (0–100) |
 | `audio.systemVolumePercent` | System output volume set once by on/toggle-on (0–100; default 50) |
 | `audio.fadeInSeconds`, `fadeOutSeconds` | Audio fades |

@@ -1,9 +1,9 @@
 {
   "timing": {
-    "intervalMinSeconds": 2,
-    "intervalMaxSeconds": 2,
+    "intervalMinSeconds": 20,
+    "intervalMaxSeconds": 20,
     "eventMinSeconds": 4,
-    "eventMaxSeconds": 4
+    "eventMaxSeconds": 6
   },
   "visuals": {
     "flashSeconds": 0.12,
@@ -24,8 +24,8 @@
     "minTracks": 2,
     "maxTracks": 2,
     "volume": 45,
-    "systemVolumePercent": 50,
-    "fadeInSeconds": 0.3,
+    "systemVolumePercent": 100,
+    "fadeInSeconds": 0,
     "fadeOutSeconds": 0.65
   },
   "assets": {

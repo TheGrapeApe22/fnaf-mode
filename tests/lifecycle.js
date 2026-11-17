@@ -64,14 +64,22 @@ const gap = nextStart.time - lastEnd.time;
 assert(gap >= 0.49 && gap < 0.8, `Configured 0.5-second gap respected: ${gap}`);
 // A new animation must keep its associated sound silent until the opening flash ends.
 const savedConfig = extension._config();
+const mappingPath = `${savedConfig.assetDirectory}/audio_links.json`;
+GLib.file_set_contents(mappingPath, JSON.stringify({images: {plain: ['a.mp3', 'b.mp3']},
+    animations: {'converted-right': ['jumpscare.mp3']}}));
 extension._config = () => ({...savedConfig, flashSeconds: 0.4});
 settings.set_boolean('active', true);
 spin(650);
 assert(extension._players.size === 0, 'Opening flash does not start animation audio early');
 spin(400);
-assert(extension._players.size === 3, 'Associated audio and both global tracks start with animation after flash');
+assert(extension._players.size === 1, 'Mapping edit takes effect next event, after opening flash');
+GLib.file_set_contents(mappingPath, '{editing');
+settings.set_boolean('active', true);
+spin(650);
+assert(settings.active && extension._players.size === 2,
+    'Malformed mapping during an edit retains the last valid mapping and keeps mode active');
 extension.disable();
 assert(!settings.handlers.size && !sessionMode.handlers.size && !layoutManager.handlers.size &&
     !extension._sources.size, 'Disable disconnects signals and removes timers');
 spin(100);
-print('PASS: one-shot playback, three simultaneous audio tracks, synchronization, scheduling, alignment, flicker and cleanup');
+print('PASS: mapped audio, dynamic edits, invalid-JSON recovery, one-shot playback, timing, alignment and cleanup');

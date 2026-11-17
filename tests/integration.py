@@ -138,8 +138,12 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
                     fixture_assets / 'images/plain.png')
     for name in ['a.mp3', 'b.mp3']:
         shutil.copyfile(assets / 'sounds' / name, fixture_assets / 'sounds' / name)
-    associated = fixture_assets / 'animations/converted-right/FNAF 2 Jumpscare Sound.mp3'
+    associated = fixture_assets / 'sounds/jumpscare.mp3'
     shutil.copyfile(assets / 'sounds/a.mp3', associated)
+    (fixture_assets / 'audio_links.json').write_text(json.dumps({
+        'images': {'plain': ['a.mp3', 'b.mp3']},
+        'animations': {'converted-right': ['a.mp3', 'b.mp3', 'jumpscare.mp3']}
+    }))
     config.write_text(json.dumps({'timing': {'intervalMinSeconds': 0.5, 'intervalMaxSeconds': 0.5,
                                            'eventMinSeconds': 2, 'eventMaxSeconds': 2},
                                  'audio': {'minTracks': 2, 'maxTracks': 2},
@@ -160,7 +164,7 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     commands = [json.loads(line) for line in capture.read_text().splitlines()]
     assert {args[-1] for args in commands[:3]} == {
         str(associated), str(fixture_assets / 'sounds/a.mp3'), str(fixture_assets / 'sounds/b.mp3')
-    }, 'Animation plays its associated MP3 in addition to both global tracks'
+    }, 'Animation plays every mapped track exactly once, without extra random tracks'
     argv = next(args for args in commands if args[-1] == str(associated))
     assert '--volume=45' in argv and '--length=2' in argv
     output = home / 'render.wav'

@@ -1,11 +1,12 @@
-Put your own MP3 files here for global event audio. Every event chooses one or two
-distinct files (according to audio.minTracks / maxTracks) and starts them together,
-fading in and out. An animation's associated MP3 plays in addition to these tracks.
-With two global tracks and an associated MP3, all three play together.
+Keep all MP3 files here. ../audio_links.json selects the complete set of sounds
+for each animation folder or still image. Every listed track starts together,
+fading in and out. Include ambient tracks and any jumpscare track in the same list.
+No extra random sounds are added. Duplicate names are played once.
 
-For an animation-specific sound, put an MP3 next to that animation's frames/ folder.
-audio.mp3 is preferred, but other filenames work too.
+Empty or omitted mappings are silent. Missing MP3s are skipped and logged. The
+mapping is read before every event, so edits to the installed JSON apply next time.
+If audio_links.json is absent, audio.minTracks / maxTracks control random selection
+from this folder instead.
 
-For a complete fade envelope, use tracks at least as long as the event (animation
-playback plus ending, or timing.eventMaxSeconds for a still image). Tracks never
+For an audible ending fade, use tracks at least as long as the event. Tracks never
 loop. No audio is downloaded.
