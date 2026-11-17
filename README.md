@@ -35,7 +35,8 @@ If `~/.local/bin` is on your PATH, use just `fnaf-mode`. Otherwise add
 `deploy.sh --no-enable` installs files without asking GNOME to enable the
 extension. The extension is initially inactive; once enabled, its on/off setting
 persists across logins. Locking the session pauses effects; unlocking restarts the
-normal random wait. Deploying again preserves your installed config and media.
+normal random wait. Each deployment overwrites the installed config with this
+repository's `config.json`. Existing installed media files are preserved.
 GNOME caches extension modules, so disabling/re-enabling alone does not reliably
 load code changes; log out/in after redeployment.
 
@@ -98,8 +99,9 @@ fnaf-mode config   # print config path
 fnaf-mode assets   # print media library path
 ```
 
-Edit `~/.config/fnaf-mode/config.json`. The complete starting config is
-[`config.example.json`](config.example.json). Key settings:
+Edit this repository's [`config.json`](config.json), then run `./deploy.sh` to
+overwrite `~/.config/fnaf-mode/config.json`. You can also edit the installed file
+directly for immediate changes, but the next deployment replaces it. Key settings:
 
 | Key | Default | Meaning |
 | --- | --- | --- |

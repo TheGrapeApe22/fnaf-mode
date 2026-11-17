@@ -24,7 +24,7 @@ data = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share'))
 config = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'fnaf-mode'
 dest = data / 'gnome-shell/extensions/fnaf-mode@local'
 bin_dir = Path.home() / '.local/bin'
-# Merge directories; never overwrite an existing media file or config.
+# Merge directories; preserve existing media files.
 shutil.copytree(source / 'extension', dest, dirs_exist_ok=True,
                 ignore=shutil.ignore_patterns('gschemas.compiled'))
 subprocess.run(['glib-compile-schemas', '--strict', str(dest / 'schemas')], check=True)
@@ -37,8 +37,7 @@ for item in (source / 'assets').rglob('*'):
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(item, target)
 config.mkdir(parents=True, exist_ok=True)
-if not (config / 'config.json').exists():
-    shutil.copy2(source / 'config.example.json', config / 'config.json')
+shutil.copy2(source / 'config.json', config / 'config.json')
 bin_dir.mkdir(parents=True, exist_ok=True)
 shutil.copy2(source / 'bin/fnaf-mode', bin_dir / 'fnaf-mode')
 (bin_dir / 'fnaf-mode').chmod(0o755)

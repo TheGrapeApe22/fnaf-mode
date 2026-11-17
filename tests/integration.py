@@ -28,13 +28,13 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     assets = home / 'data/fnaf-mode/assets'
     assert run([command, 'config'], env).stdout.strip() == str(config)
     assert run([command, 'assets'], env).stdout.strip() == str(assets)
-    # Re-deployment must preserve user edits and original media.
+    # Re-deployment replaces installed config while preserving original media.
     config.write_text('{"soundVolume": 17}')
     (assets / 'images/keep.png').write_bytes(b'personal media')
     run(['bash', 'deploy.sh', '--no-enable'], env)
-    assert json.loads(config.read_text()) == {'soundVolume': 17}
+    assert config.read_bytes() == (ROOT / 'config.json').read_bytes()
     assert (assets / 'images/keep.png').read_bytes() == b'personal media'
-    print('PASS: isolated deployment, CLI paths, config/media preservation')
+    print('PASS: isolated deployment, CLI paths, config overwrite, media preservation')
 
     ffmpeg, mpv = shutil.which('ffmpeg'), shutil.which('mpv')
     if not ffmpeg or not mpv:
