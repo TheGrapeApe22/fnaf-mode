@@ -126,12 +126,12 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     test_module = home / 'extension-under-test.js'
     test_module.write_text(module)
     print(run(['gjs', '-m', 'tests/lifecycle.js', test_module.as_uri()], env).stdout.strip())
-    argv = json.loads(capture.read_text().splitlines()[0])
-    assert '--volume=45' in argv and '--length=2' in argv
-    assert argv[-1] == str(associated), 'Animation uses its own MP3, not global random tracks'
     commands = [json.loads(line) for line in capture.read_text().splitlines()]
-    assert any(Path(args[-1]).parent == fixture_assets / 'sounds' for args in commands), \
-        'Still images keep random global audio fallback'
+    assert {args[-1] for args in commands[:3]} == {
+        str(associated), str(fixture_assets / 'sounds/a.mp3'), str(fixture_assets / 'sounds/b.mp3')
+    }, 'Animation plays its associated MP3 in addition to both global tracks'
+    argv = next(args for args in commands if args[-1] == str(associated))
+    assert '--volume=45' in argv and '--length=2' in argv
     output = home / 'render.wav'
     # Render captured mpv audio filters to disk, never to a sound device.
     run([mpv, '--ao=pcm', '--audio-format=s16', f'--ao-pcm-file={output}', *argv])

@@ -17,7 +17,8 @@ audio fades out with that ending. The configured event duration applies only to
 still images; animations use frame count / FPS plus the opening/ending effects.
 
 An MP3 with any filename works; audio.mp3 takes priority if several are present.
-Use one MP3 per folder. Without a local MP3, global sounds/ tracks are used.
+Use one MP3 per folder. The local MP3 plays alongside the global sounds/ tracks, not in their place.
+Without a local MP3, the global tracks still play.
 Older folders with frames directly in the animation folder still work. A frames/
 subfolder takes precedence over root-level frame files.
 

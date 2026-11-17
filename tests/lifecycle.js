@@ -14,7 +14,8 @@ assert(extension._sources.size === 0, 'Initially inactive');
 settings.set_boolean('active', true);
 assert(extension._sources.size === 1, 'Single pending event');
 spin(650);
-assert(layoutManager.actors.size === 1 && extension._players.size === 1, 'Animation and its associated audio started');
+assert(layoutManager.actors.size === 1 && extension._players.size === 3,
+    'Animation starts its associated audio plus both global tracks');
 assert(extension._overlay.x === 17 && extension._overlay.y === 29, 'Primary monitor positioning');
 assert(extension._image.x === 840 && extension._image.y === 0 &&
     extension._image.width === 1080 && extension._image.height === 1080,
@@ -36,7 +37,7 @@ assert(first.destroyed && !layoutManager.actors.size && !extension._sources.size
     'Off immediately clears actors, timers, and audio');
 settings.set_boolean('active', true);
 spin(650);
-assert(extension._players.size === 2, 'Still image uses the global paired-audio fallback');
+assert(extension._players.size === 2, 'Still image uses both global tracks');
 sessionMode.isLocked = true;
 sessionMode.emit('updated');
 assert(!layoutManager.actors.size && !extension._sources.size && !extension._players.size, 'Lock cleanup');
@@ -68,9 +69,9 @@ settings.set_boolean('active', true);
 spin(650);
 assert(extension._players.size === 0, 'Opening flash does not start animation audio early');
 spin(400);
-assert(extension._players.size === 1, 'Associated audio starts with animation after flash');
+assert(extension._players.size === 3, 'Associated audio and both global tracks start with animation after flash');
 extension.disable();
 assert(!settings.handlers.size && !sessionMode.handlers.size && !layoutManager.handlers.size &&
     !extension._sources.size, 'Disable disconnects signals and removes timers');
 spin(100);
-print('PASS: one-shot playback, associated audio synchronization, global fallback, scheduling, alignment, flicker and cleanup');
+print('PASS: one-shot playback, three simultaneous audio tracks, synchronization, scheduling, alignment, flicker and cleanup');

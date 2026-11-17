@@ -114,7 +114,6 @@ export default class FnafMode extends Extension {
         const phases = visual.type === 'animation'
             ? animationTimeline(c, visual.frames.length)
             : timeline(c, randomBetween(c.eventMinSeconds, c.eventMaxSeconds));
-        const sounds = visual.audio ? [visual.audio] : assets.sounds;
         let soundStarted = false;
         const started = GLib.get_monotonic_time();
         const frameGeometry = new Map();
@@ -142,7 +141,10 @@ export default class FnafMode extends Extension {
             }
             if (!soundStarted && elapsed >= phases.imageStart) {
                 soundStarted = true;
-                this._playSounds(sounds, phases.end - phases.imageStart, c);
+                const audioSeconds = phases.end - phases.imageStart;
+                this._playSounds(assets.sounds, audioSeconds, c);
+                if (visual.audio)
+                    this._playSounds([visual.audio], audioSeconds, c);
             }
             const frame = frameIndex(visual, c, phases, elapsed);
             if (frame !== lastFrame && elapsed < phases.imageEnd) {

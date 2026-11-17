@@ -9,8 +9,8 @@ time**. Still-image events last **4 seconds**; animations play once at
 `visuals.animationFps`, then go black and fade back to desktop. Opening flashes
 and repeated flicker bursts overlay the images. A different visual is chosen each
 time when at least two exist. An animation's associated MP3 starts with its first
-frame and fades out with the ending. Otherwise, one or two random tracks play
-from the global sound folder. Supply your own media; nothing is downloaded.
+frame and fades out with the ending, alongside the random global tracks.
+Each event also plays one or two random tracks from the global sound folder. Supply your own media; nothing is downloaded.
 Nothing controls physical lights or brightness.
 
 ## Install
@@ -133,12 +133,14 @@ directly; individual GIF files already extracted as frames can be used as-is.
 Put each animation's MP3 beside its `frames/` directory. `audio.mp3` is preferred
 (case-insensitive). A descriptive filename also works: if `audio.mp3` is absent,
 the first MP3 in natural filename order is used. Keep one MP3 per animation for
-clarity. This track replaces global random sounds for that animation, regardless
-of `audio.minTracks` / `maxTracks`.
+clarity. This track plays **in addition to** the global random tracks.
 
-Without an associated MP3, the event chooses one or two distinct tracks from
-`sounds/`. Supply at least two there for simultaneous playback. `audio.enabled`
-and volume/fade settings apply to both associated and random tracks.
+Every event chooses one or two distinct tracks from `sounds/`, according to
+`audio.minTracks` / `maxTracks`. With both set to 2 and an associated MP3 present,
+all three tracks start together with the animation. Without an associated MP3,
+the event still plays its global tracks. With an empty global sound folder, the
+associated MP3 can play alone. `audio.enabled` and volume/fade settings apply to
+all tracks.
 
 Animation playback lasts **frame count ÷ animationFps**. The opening flash happens
 first; the first animation frame and its audio start together after it. After the
@@ -152,8 +154,8 @@ the configured frame rate is used for every animation.
 Prefer tracks at least as long as the animation plus its blackout and return fade,
 or the configured still-image event duration, so the ending fade stays audible.
 Shorter tracks are padded with silence; longer tracks are faded and cut to the
-event duration. Tracks never loop. Volume is per track, so two global tracks
-together can be louder. No sound changes system volume.
+event duration. Tracks never loop. Volume is per track, so simultaneous tracks
+combine at a higher volume. No sound changes system volume.
 
 ## Adjust settings
 
@@ -179,7 +181,7 @@ The file has four sections: `timing`, `visuals`, `audio`, and `assets`.
 | `visuals.blackoutSeconds`, `fadeBackSeconds` | Black screen, then return to desktop |
 | `visuals.imageOpacity`, `animationFps` | Visual opacity (0–255) and frame rate (1–30) |
 | `audio.enabled` | Allow audio |
-| `audio.minTracks`, `maxTracks` | Number of random global MP3s (1–2), when no associated track exists |
+| `audio.minTracks`, `maxTracks` | Number of random global MP3s (1–2), plus any associated animation track |
 | `audio.volume` | Per-track mpv volume (0–100) |
 | `audio.fadeInSeconds`, `fadeOutSeconds` | Audio fades |
 | `assets.directory` | Empty string for default media root, or an absolute path / `~/...` |
