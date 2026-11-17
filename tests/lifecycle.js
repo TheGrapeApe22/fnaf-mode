@@ -55,4 +55,4 @@ extension.disable();
 assert(!settings.handlers.size && !sessionMode.handlers.size && !layoutManager.handlers.size &&
     !extension._sources.size, 'Disable disconnects signals and removes timers');
 spin(100);
-print('PASS: scheduling, ongoing flicker, primary screen, click-through properties, audio pairing, off/lock/disable cleanup');
+print('PASS: scheduling, image alignment, ongoing flicker, primary screen, click-through properties, audio pairing, off/lock/disable cleanup');
