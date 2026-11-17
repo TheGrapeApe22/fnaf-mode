@@ -2,6 +2,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
 export const DEFAULTS = Object.freeze({
+    initialWaitSeconds: 5,
     intervalMinSeconds: 5, intervalMaxSeconds: 50,
     eventMinSeconds: 2, eventMaxSeconds: 4,
     flashSeconds: 0.12, flashOpacity: 180,

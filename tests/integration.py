@@ -144,7 +144,8 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
         'images': {'plain.png': ['a.mp3', 'b.mp3']},
         'animations': {'converted-right': ['a.mp3', 'b.mp3', 'jumpscare.mp3']}
     }))
-    config.write_text(json.dumps({'timing': {'intervalMinSeconds': 0.5, 'intervalMaxSeconds': 0.5,
+    config.write_text(json.dumps({'timing': {'initialWaitSeconds': 0.8,
+                                           'intervalMinSeconds': 0.5, 'intervalMaxSeconds': 0.5,
                                            'eventMinSeconds': 2, 'eventMaxSeconds': 2},
                                  'visuals': {'flashSeconds': 0, 'blackoutSeconds': 0, 'fadeBackSeconds': 0},
                                  'assets': {'directory': str(fixture_assets)}}))

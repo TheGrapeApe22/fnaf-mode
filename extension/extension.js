@@ -56,7 +56,7 @@ export default class FnafMode extends Extension {
         this._clear();
         if (this._settings.get_boolean('active') && !Main.sessionMode.isLocked &&
             !Main.sessionMode.isGreeter && Main.layoutManager.primaryMonitor)
-            this._schedule();
+            this._schedule(true);
     }
 
     _config() {
@@ -69,11 +69,12 @@ export default class FnafMode extends Extension {
         }
     }
 
-    _schedule() {
+    _schedule(initial = false) {
         this._lastConfig = this._config();
         const c = this._lastConfig;
-        this._later(randomBetween(c.intervalMinSeconds, c.intervalMaxSeconds) * 1000,
-            () => this._begin());
+        const seconds = initial ? c.initialWaitSeconds
+            : randomBetween(c.intervalMinSeconds, c.intervalMaxSeconds);
+        this._later(seconds * 1000, () => this._begin());
     }
 
     _begin() {

@@ -1,9 +1,10 @@
 {
   "timing": {
-    "intervalMinSeconds": 20,
-    "intervalMaxSeconds": 20,
+    "initialWaitSeconds": 5,
+    "intervalMinSeconds": 1,
+    "intervalMaxSeconds": 1,
     "eventMinSeconds": 4,
-    "eventMaxSeconds": 6
+    "eventMaxSeconds": 8
   },
   "visuals": {
     "flashSeconds": 0.12,

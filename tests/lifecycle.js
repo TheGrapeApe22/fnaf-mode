@@ -14,6 +14,9 @@ assert(extension._sources.size === 0, 'Initially inactive');
 settings.set_boolean('active', true);
 assert(extension._sources.size === 1, 'Single pending event');
 spin(650);
+assert(!layoutManager.actors.size && !extension._players.size,
+    'Initial wait is longer than the regular interval and has no early effects or audio');
+spin(300);
 assert(layoutManager.actors.size === 1 && extension._players.size === 3,
     'Animation starts its associated audio plus both global tracks');
 assert(extension._overlay.x === 17 && extension._overlay.y === 29, 'Primary monitor positioning');
@@ -36,7 +39,7 @@ settings.set_boolean('active', false);
 assert(first.destroyed && !layoutManager.actors.size && !extension._sources.size && !extension._players.size,
     'Off immediately clears actors, timers, and audio');
 settings.set_boolean('active', true);
-spin(650);
+spin(950);
 assert(extension._players.size === 2, 'Still image uses both global tracks');
 sessionMode.isLocked = true;
 sessionMode.emit('updated');
@@ -44,7 +47,7 @@ assert(!layoutManager.actors.size && !extension._sources.size && !extension._pla
 sessionMode.isLocked = false;
 const fullAnimationEvents = layoutManager.events.length;
 sessionMode.emit('updated');
-spin(2700);
+spin(3000);
 assert(settings.active, 'No hidden callback errors');
 assert(!layoutManager.actors.size && extension._sources.size === 1, 'Completed event schedules normal wait');
 const lastEnd = layoutManager.events.at(-1);
@@ -69,13 +72,13 @@ GLib.file_set_contents(mappingPath, JSON.stringify({images: {'plain.png': ['a.mp
     animations: {'converted-right': ['jumpscare.mp3']}}));
 extension._config = () => ({...savedConfig, flashSeconds: 0.4});
 settings.set_boolean('active', true);
-spin(650);
+spin(950);
 assert(extension._players.size === 0, 'Opening flash does not start animation audio early');
 spin(400);
 assert(extension._players.size === 1, 'Mapping edit takes effect next event, after opening flash');
 GLib.file_set_contents(mappingPath, '{editing');
 settings.set_boolean('active', true);
-spin(650);
+spin(950);
 assert(settings.active && extension._players.size === 2,
     'Malformed mapping during an edit retains the last valid mapping and keeps mode active');
 extension.disable();

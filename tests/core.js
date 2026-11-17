@@ -24,6 +24,11 @@ function remove(file) {
 
 const root = GLib.dir_make_tmp('fnaf-test-XXXXXX');
 try {
+    assert(normalizeConfig().initialWaitSeconds === 5, 'Default initial wait is five seconds');
+    assert(normalizeConfig({timing: {initialWaitSeconds: 0}}).initialWaitSeconds === 0,
+        'Initial wait can be disabled');
+    assert(normalizeConfig({timing: {initialWaitSeconds: -1}}).initialWaitSeconds === 0,
+        'Initial wait cannot be negative');
     for (const [name, x, y] of [
         ['mangle.png', 0.5, 0.5], ['mangle-top.png', 0.5, 0],
         ['mangle_bottom.JPG', 0.5, 1], ['mangleLeft.webp', 0, 0.5],

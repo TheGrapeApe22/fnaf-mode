@@ -5,6 +5,10 @@ click-through overlay on the primary screen, including over fullscreen apps.
 Your apps retain keyboard focus and mouse input.
 
 Events alternate with normal desktop time, controlled by `timing` in `config.json`.
+`timing.initialWaitSeconds` sets the delay before the first event after activation
+or resuming from a locked session (default 5 seconds; 0 starts immediately).
+It replaces the first interval rather than adding to it. Later events use
+`intervalMinSeconds` / `intervalMaxSeconds` after the previous event finishes.
 Still-image duration is also configurable; animations play once at
 `visuals.animationFps`, then go black and fade back to desktop. Opening flashes
 and repeated flicker bursts overlay the images. A different visual is chosen each
@@ -46,8 +50,8 @@ activates the mode, not when GNOME restores it after login or unlocking.
 
 `deploy.sh --no-enable` installs files without asking GNOME to enable the
 extension. The extension is initially inactive; once enabled, its on/off setting
-persists across logins. Locking the session pauses effects; unlocking restarts the
-normal random wait. Each deployment overwrites the installed config with this
+persists across logins. Locking the session pauses effects; unlocking starts the
+initial wait again. Each deployment overwrites the installed config with this
 repository's `config.json` and mirrors its `assets/` folder into the installed
 media library. Changed files are replaced; installed files and folders absent
 from the repository are deleted, including media added only to the installed copy.
@@ -205,6 +209,7 @@ The file has four sections: `timing`, `visuals`, `audio`, and `assets`.
 
 | Setting | Meaning |
 | --- | --- |
+| `timing.initialWaitSeconds` | Wait before the first event after activation/resume (default 5 seconds) |
 | `timing.intervalMinSeconds`, `intervalMaxSeconds` | Random normal time between events |
 | `timing.eventMinSeconds`, `eventMaxSeconds` | Still-image event time, including all fades |
 | `visuals.flashSeconds`, `flashOpacity` | Opening white flash duration and opacity (0–255) |
