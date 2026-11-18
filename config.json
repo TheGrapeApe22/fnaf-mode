@@ -15,7 +15,7 @@
     "blackoutSeconds": 0.2,
     "fadeBackSeconds": 0.65,
     "imageOpacity": 255,
-    "animationFps": 12,
+    "animationFps": 24,
     "flickerGapMinSeconds": 0.12,
     "flickerGapMaxSeconds": 0.3,
     "flickerBurstMinSeconds": 0.12,

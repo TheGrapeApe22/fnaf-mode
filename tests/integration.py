@@ -156,6 +156,8 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     mocks = (ROOT / 'tests/shell-mocks.js').as_uri()
     module = module.replace("import * as Main from 'resource:///org/gnome/shell/ui/main.js';",
                             f"import * as Main from '{mocks}';\nimport {{St, Clutter}} from '{mocks}';")
+    module = module.replace("import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';",
+                            f"import {{PanelMenu}} from '{mocks}';")
     module = module.replace("'resource:///org/gnome/shell/extensions/extension.js'", repr(mocks))
     module = module.replace("'./core.js'", repr((ROOT / 'extension/core.js').as_uri()))
     test_module = home / 'extension-under-test.js'

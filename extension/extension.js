@@ -4,6 +4,7 @@ import GdkPixbuf from 'gi://GdkPixbuf';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {DEFAULTS, readConfig, scanAssets, choose, randomBetween, timeline,
     readAudioLinks, animationTimeline, frameIndex, imageAlignment, imageGeometry} from './core.js';
@@ -13,11 +14,74 @@ export default class FnafMode extends Extension {
         this._sources = new Set();
         this._players = new Set();
         this._settings = this.getSettings();
+        this._indicator = new PanelMenu.Button(0, 'FNAF mode', true);
+        this._indicator.reactive = false;
+        this._indicator.can_focus = false;
+        this._indicatorLabel = new St.Label({text: '○', y_align: Clutter.ActorAlign.CENTER,
+            style: 'min-width: 24px; text-align: center;'});
+        this._panelToggle = new St.Button({child: this._indicatorLabel, can_focus: true,
+            x_expand: true, y_expand: true});
+        this._panelToggle.connect('clicked', () => this._toggleFromPanel());
+        this._indicator.add_child(this._panelToggle);
+        Main.panel.addToStatusArea('fnaf-mode', this._indicator);
         this._configPath = GLib.build_filenamev([GLib.get_user_config_dir(), 'fnaf-mode', 'config.json']);
         this._settingsId = this._settings.connect('changed::active', () => this._sync());
         this._monitorId = Main.layoutManager.connect('monitors-changed', () => this._sync());
         this._sessionId = Main.sessionMode.connect('updated', () => this._sync());
         this._sync();
+    }
+
+    _toggleFromPanel() {
+        if (this._toggleProcess)
+            return;
+        try {
+            // Use the CLI so panel activation also applies the configured output volume.
+            const command = GLib.build_filenamev([GLib.get_home_dir(), '.local', 'bin', 'fnaf-mode']);
+            const process = Gio.Subprocess.new([command, 'toggle'],
+                Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_PIPE);
+            this._toggleProcess = process;
+            process.communicate_utf8_async(null, null, (proc, result) => {
+                try {
+                    const [, , stderr] = proc.communicate_utf8_finish(result);
+                    if (!proc.get_successful())
+                        throw new Error(stderr.trim() || 'Could not toggle FNAF mode');
+                } catch (error) {
+                    if (this._indicator)
+                        Main.notifyError('FNAF mode', error.message);
+                } finally {
+                    if (this._toggleProcess === proc)
+                        this._toggleProcess = null;
+                }
+            });
+        } catch (error) {
+            Main.notifyError('FNAF mode', error.message);
+        }
+    }
+
+    _updateIndicator() {
+        let text = '○';
+        let description = 'FNAF mode off. Click to turn on.';
+        if (this._settings.get_boolean('active')) {
+            if (this._nextEventAt !== null) {
+                const seconds = Math.max(0, Math.ceil((this._nextEventAt - GLib.get_monotonic_time()) / 1000000));
+                text = String(seconds);
+                description = `FNAF mode on. Next event in ${seconds} seconds. Click to turn off.`;
+            } else {
+                text = this._overlay ? '●' : '–';
+                description = `FNAF mode ${this._overlay ? 'event active' : 'paused'}. Click to turn off.`;
+            }
+        }
+        this._indicatorLabel.text = text;
+        this._panelToggle.accessible_name = description;
+        this._indicator.accessible_name = description;
+    }
+
+    _stopCountdown() {
+        if (this._countdownId) {
+            GLib.source_remove(this._countdownId);
+            this._countdownId = 0;
+        }
+        this._nextEventAt = null;
     }
 
     _later(ms, callback) {
@@ -36,6 +100,7 @@ export default class FnafMode extends Extension {
     }
 
     _clear() {
+        this._stopCountdown();
         for (const id of this._sources)
             GLib.source_remove(id);
         this._sources.clear();
@@ -50,6 +115,7 @@ export default class FnafMode extends Extension {
         }
         this._image = null;
         this._light = null;
+        this._updateIndicator();
     }
 
     _sync() {
@@ -75,10 +141,18 @@ export default class FnafMode extends Extension {
         const c = this._lastConfig;
         const seconds = initial ? c.initialWaitSeconds
             : randomBetween(c.intervalMinSeconds, c.intervalMaxSeconds);
+        this._stopCountdown();
+        this._nextEventAt = GLib.get_monotonic_time() + seconds * 1000000;
+        this._updateIndicator();
+        this._countdownId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            this._updateIndicator();
+            return GLib.SOURCE_CONTINUE;
+        });
         this._later(seconds * 1000, () => this._begin());
     }
 
     _begin() {
+        this._stopCountdown();
         const c = this._config();
         this._lastConfig = c;
         const root = c.assetDirectory
@@ -111,8 +185,10 @@ export default class FnafMode extends Extension {
         this._warnedEmpty = false;
         this._previousVisual = visual.id;
         const monitor = Main.layoutManager.primaryMonitor;
-        if (!monitor)
+        if (!monitor) {
+            this._updateIndicator();
             return;
+        }
         this._firstEvent = false;
         this._overlay = new St.Widget({reactive: false, can_focus: false,
             x: monitor.x, y: monitor.y, width: monitor.width, height: monitor.height,
@@ -127,6 +203,7 @@ export default class FnafMode extends Extension {
         Main.layoutManager.addTopChrome(this._overlay, {
             affectsStruts: false, trackFullscreen: false,
         });
+        this._updateIndicator();
         const phases = visual.type === 'animation'
             ? animationTimeline(c, visual.frames.length)
             : timeline(c, randomBetween(c.eventMinSeconds, c.eventMaxSeconds));
@@ -260,6 +337,10 @@ export default class FnafMode extends Extension {
         Main.layoutManager.disconnect(this._monitorId);
         Main.sessionMode.disconnect(this._sessionId);
         this._clear();
+        this._indicator.destroy();
+        this._indicator = null;
+        this._indicatorLabel = null;
+        this._panelToggle = null;
         this._settings = null;
         this._lastConfig = null;
         this._previousVisual = null;

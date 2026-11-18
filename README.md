@@ -21,6 +21,13 @@ of tracks for each image or animation. All listed tracks start together with the
 visual and fade out with the ending. Supply your own media; nothing is downloaded.
 Nothing controls physical lights or brightness.
 
+The top bar shows `○` when mode is off, seconds until the next event while waiting,
+and `●` during an event. The countdown includes the initial wait and follows the
+actual scheduled deadline, updating once per second. `–` means effects are paused.
+Click the indicator to toggle mode; it uses the same command and configured
+activation volume as the terminal. Disabling the whole extension removes the
+indicator.
+
 ## Install
 
 From this folder:

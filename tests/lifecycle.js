@@ -1,5 +1,6 @@
 import GLib from 'gi://GLib';
-import {layoutManager, sessionMode, settings} from './shell-mocks.js';
+import Gio from 'gi://Gio';
+import {layoutManager, sessionMode, settings, panel} from './shell-mocks.js';
 const {default: FnafMode} = await import(ARGV[0]);
 Math.random = () => 0.5; // Repeatable burst timing and darkness.
 function assert(value, message) { if (!value) throw new Error(message); }
@@ -11,6 +12,48 @@ function spin(ms) {
 const extension = new FnafMode();
 extension.enable();
 assert(extension._sources.size === 0, 'Initially inactive');
+assert(extension._indicatorLabel.text === '○' && panel.statusArea['fnaf-mode'] === extension._indicator,
+    'Off mode has an open-circle indicator in the top bar');
+// Check that the actual click callback delegates to the CLI, without changing system volume.
+const originalSpawn = Gio.Subprocess.new;
+const calls = [];
+let completeToggle;
+Gio.Subprocess.new = argv => {
+    calls.push(argv);
+    return {
+        communicate_utf8_async(_input, _cancel, done) {
+            completeToggle = () => {
+                settings.set_boolean('active', !settings.active);
+                done(this, {});
+            };
+        },
+        communicate_utf8_finish() { return [true, null, '']; },
+        get_successful() { return true; },
+    };
+};
+try {
+    extension._panelToggle.emit('clicked');
+    extension._panelToggle.emit('clicked');
+    assert(calls.length === 1 && calls[0][0] === `${GLib.get_home_dir()}/.local/bin/fnaf-mode` &&
+        calls[0][1] === 'toggle', 'Click runs the CLI once and guards against double clicks');
+    completeToggle();
+    assert(settings.active && extension._indicatorLabel.text === '1', 'Click on starts countdown');
+    extension._panelToggle.emit('clicked');
+    completeToggle();
+    assert(!settings.active && extension._indicatorLabel.text === '○' && !extension._countdownId,
+        'Click off restores the circle and stops the countdown');
+} finally {
+    Gio.Subprocess.new = originalSpawn;
+}
+const initialConfig = extension._config();
+extension._config = () => ({...initialConfig, initialWaitSeconds: 2.2});
+settings.set_boolean('active', true);
+assert(extension._indicatorLabel.text === '3', 'Countdown rounds remaining seconds up');
+spin(1100);
+assert(extension._indicatorLabel.text === '2' && !extension._overlay,
+    'Countdown ticks from the scheduled deadline while desktop remains normal');
+settings.set_boolean('active', false);
+extension._config = () => initialConfig;
 settings.set_boolean('active', true);
 assert(extension._sources.size === 1, 'Single pending event');
 spin(650);
@@ -19,6 +62,8 @@ assert(!layoutManager.actors.size && !extension._players.size,
 spin(300);
 assert(layoutManager.actors.size === 1 && extension._players.size === 3,
     'Animation starts its associated audio plus both global tracks');
+assert(extension._indicatorLabel.text === '●' && !extension._countdownId,
+    'Active event displays a filled circle and has no countdown timer');
 assert(extension._overlay.x === 17 && extension._overlay.y === 29, 'Primary monitor positioning');
 assert(extension._image.x === 840 && extension._image.y === 0 &&
     extension._image.width === 1080 && extension._image.height === 1080,
@@ -38,18 +83,24 @@ const first = extension._overlay;
 settings.set_boolean('active', false);
 assert(first.destroyed && !layoutManager.actors.size && !extension._sources.size && !extension._players.size,
     'Off immediately clears actors, timers, and audio');
+assert(extension._indicatorLabel.text === '○' && !extension._countdownId,
+    'Terminal off also updates the indicator');
 settings.set_boolean('active', true);
 spin(950);
 assert(extension._players.size === 2, 'Still image uses both global tracks');
 sessionMode.isLocked = true;
 sessionMode.emit('updated');
 assert(!layoutManager.actors.size && !extension._sources.size && !extension._players.size, 'Lock cleanup');
+assert(extension._indicatorLabel.text === '–' && !extension._countdownId,
+    'Paused session has no stale countdown');
 sessionMode.isLocked = false;
 const fullAnimationEvents = layoutManager.events.length;
 sessionMode.emit('updated');
 spin(3000);
 assert(settings.active, 'No hidden callback errors');
 assert(!layoutManager.actors.size && extension._sources.size === 1, 'Completed event schedules normal wait');
+assert(extension._indicatorLabel.text === '1' && extension._countdownId,
+    'Completed event restores the normal cooldown countdown');
 const lastEnd = layoutManager.events.at(-1);
 assert(lastEnd.kind === 'end', 'Previous event finished');
 const completedStart = layoutManager.events.slice(fullAnimationEvents).find(e => e.kind === 'start');
@@ -93,5 +144,7 @@ assert(extension._previousVisual.endsWith('/plain.png') && extension._players.si
 extension.disable();
 assert(!settings.handlers.size && !sessionMode.handlers.size && !layoutManager.handlers.size &&
     !extension._sources.size, 'Disable disconnects signals and removes timers');
+assert(!panel.statusArea['fnaf-mode'] && !extension._indicator && !extension._countdownId,
+    'Disable removes the top-bar indicator and its timer');
 spin(100);
-print('PASS: mapped audio, dynamic edits, invalid-JSON recovery, one-shot playback, timing, alignment and cleanup');
+print('PASS: panel countdown/toggle/cleanup, mapped audio, live edits, one-shot playback, timing and alignment');
