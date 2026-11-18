@@ -108,10 +108,7 @@ export default class FnafMode extends Extension {
         for (const id of this._sources)
             GLib.source_remove(id);
         this._sources.clear();
-        for (const player of this._players) {
-            try { player.send_signal(15); } catch (_) { /* Already exited. */ }
-        }
-        this._players.clear();
+        this._stopPlayers();
         if (this._overlay) {
             Main.layoutManager.removeChrome(this._overlay);
             this._overlay.destroy();
@@ -120,6 +117,13 @@ export default class FnafMode extends Extension {
         this._image = null;
         this._light = null;
         this._updateIndicator();
+    }
+
+    _stopPlayers() {
+        for (const player of this._players) {
+            try { player.send_signal(15); } catch (_) { /* Already exited. */ }
+        }
+        this._players.clear();
     }
 
     _sync() {
@@ -153,11 +157,20 @@ export default class FnafMode extends Extension {
             this._updateIndicator();
             return GLib.SOURCE_CONTINUE;
         });
+        if (initial && c.soundEnabled && seconds > 0) {
+            // Wake the output shortly before the first event, without extending the wait.
+            this._later(Math.max(0, seconds - 1.5) * 1000, () => {
+                const silence = GLib.build_filenamev([this.path, 'audio', 'warmup.wav']);
+                this._playSounds([silence], 0.15, {...c, soundVolume: 0,
+                    soundFadeInSeconds: 0, soundFadeOutSeconds: 0});
+            });
+        }
         this._later(seconds * 1000, () => this._begin());
     }
 
     _begin() {
         this._stopCountdown();
+        this._stopPlayers(); // End any slow warm-up before starting actual event audio.
         const c = this._config();
         this._lastConfig = c;
         const root = c.assetDirectory

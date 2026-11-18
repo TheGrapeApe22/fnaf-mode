@@ -2,8 +2,8 @@
   "timing": {
     "initialWaitSeconds": 5,
     "jumpscareFirst": true,
-    "intervalMinSeconds": 5,
-    "intervalMaxSeconds": 5,
+    "intervalMinSeconds": 60,
+    "intervalMaxSeconds": 60,
     "eventMinSeconds": 4,
     "eventMaxSeconds": 8
   },

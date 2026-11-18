@@ -50,13 +50,18 @@ print('PASS: CLI status reports ON, OFF, inactive extension and unavailable GNOM
 with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     home = Path(tmp)
     env = dict(os.environ, HOME=tmp, XDG_DATA_HOME=str(home / 'data'),
-               XDG_CONFIG_HOME=str(home / 'config'), GSETTINGS_BACKEND='memory')
+               XDG_CONFIG_HOME=str(home / 'config'), GSETTINGS_BACKEND='memory',
+               FNAF_EXTENSION_PATH=str(ROOT / 'extension'))
     run(['bash', 'deploy.sh', '--no-enable'], env)
     command = home / '.local/bin/fnaf-mode'
     config = home / 'config/fnaf-mode/config.json'
     assets = home / 'data/fnaf-mode/assets'
     assert run([command, 'config'], env).stdout.strip() == str(config)
     assert run([command, 'assets'], env).stdout.strip() == str(assets)
+    warmup = home / 'data/gnome-shell/extensions/fnaf-mode@local/audio/warmup.wav'
+    with wave.open(str(warmup), 'rb') as wav:
+        assert abs(wav.getnframes() / wav.getframerate() - 0.15) < 0.001
+        assert not any(wav.readframes(wav.getnframes())), 'Warm-up file must contain only silence'
     # Re-deployment replaces config and removes installed-only media.
     config.write_text('{"soundVolume": 17}')
     (assets / 'images/keep.png').write_bytes(b'personal media')
@@ -122,7 +127,7 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     player.write_text('#!/usr/bin/env python3\nimport json, os, sys, time\n'
                       'with open(os.environ["FNAF_AUDIO_CAPTURE"], "a") as f:\n'
                       '    f.write(json.dumps(sys.argv[1:]) + "\\n")\n'
-                      'time.sleep(10)\n')
+                      'time.sleep(0.15 if sys.argv[-1].endswith("/warmup.wav") else 10)\n')
     player.chmod(0o755)
     env.update(PATH=str(fake_bin) + os.pathsep + os.environ['PATH'],
                FNAF_AUDIO_CAPTURE=str(capture))
@@ -165,6 +170,9 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     test_module.write_text(module)
     print(run(['gjs', '-m', 'tests/lifecycle.js', test_module.as_uri()], env).stdout.strip())
     commands = [json.loads(line) for line in capture.read_text().splitlines()]
+    warmups = [args for args in commands if args[-1].endswith('/warmup.wav')]
+    assert warmups and all('--volume=0' in args and '--length=0.15' in args for args in warmups)
+    commands = [args for args in commands if not args[-1].endswith('/warmup.wav')]
     assert {args[-1] for args in commands[:3]} == {
         str(associated), str(fixture_assets / 'sounds/a.mp3'), str(fixture_assets / 'sounds/b.mp3')
     }, 'Animation plays every mapped track exactly once, without extra random tracks'

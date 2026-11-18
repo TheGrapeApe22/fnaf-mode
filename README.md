@@ -9,6 +9,12 @@ Events alternate with normal desktop time, controlled by `timing` in `config.jso
 or resuming from a locked session (default 5 seconds; 0 starts immediately).
 It replaces the first interval rather than adding to it. Later events use
 `intervalMinSeconds` / `intervalMaxSeconds` after the previous event finishes.
+With audio enabled and a nonzero initial wait, a bundled 150 ms silent WAV plays
+at zero volume about 1.5 seconds before the first event to wake the audio output.
+It runs once per activation/resume, not between later events, and is canceled on
+off or lock. It does not extend the initial wait; very short waits give the device
+less time to wake up. The silent file is part of the extension, not the mapped
+sound library.
 Set `timing.jumpscareFirst` to `true` to force the first event after activation or
 resume to be an animation. Later events choose normally from images and animations.
 If no animation is available, it waits for animation frames rather than showing

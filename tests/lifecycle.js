@@ -57,7 +57,7 @@ assert(extension._indicatorLabel.text === '2' && !extension._overlay,
 settings.set_boolean('active', false);
 extension._config = () => initialConfig;
 settings.set_boolean('active', true);
-assert(extension._sources.size === 1, 'Single pending event');
+assert(extension._sources.size === 2, 'Initial wait schedules one silent warm-up and one event');
 spin(650);
 assert(!layoutManager.actors.size && !extension._players.size,
     'Initial wait is longer than the regular interval and has no early effects or audio');

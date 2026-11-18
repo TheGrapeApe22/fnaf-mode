@@ -12,7 +12,10 @@ class Settings extends Signals {
     set_boolean(_key, value) { this.active = value; this.emit('changed::active'); }
 }
 export const settings = new Settings();
-export class Extension { getSettings() { return settings; } }
+export class Extension {
+    get path() { return GLib.getenv('FNAF_EXTENSION_PATH'); }
+    getSettings() { return settings; }
+}
 class Widget extends Signals {
     constructor(props) {
         super();
