@@ -15,12 +15,13 @@ export const DEFAULTS = Object.freeze({
     soundEnabled: true,
     soundVolume: 45, soundFadeInSeconds: 0.3, soundFadeOutSeconds: 0.65,
     assetDirectory: '',
+    panelTextColor: '#ffffff',
 });
 
 export function normalizeConfig(raw = {}) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw))
         throw new Error('Config must be a JSON object');
-    for (const section of ['timing', 'visuals', 'audio', 'assets']) {
+    for (const section of ['timing', 'visuals', 'audio', 'panel', 'assets']) {
         if (section in raw && (!raw[section] || typeof raw[section] !== 'object' || Array.isArray(raw[section])))
             throw new Error(`${section} must be a JSON object`);
     }
@@ -31,6 +32,11 @@ export function normalizeConfig(raw = {}) {
     }
     if (raw.assets && 'directory' in raw.assets)
         input.assetDirectory = raw.assets.directory;
+    if (raw.panel && 'textColor' in raw.panel) {
+        if (typeof raw.panel.textColor !== 'string' || !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(raw.panel.textColor))
+            throw new Error('panel.textColor must be a hex color such as #ffffff or #f00');
+        input.panelTextColor = raw.panel.textColor;
+    }
     const c = {...DEFAULTS};
     for (const [key, value] of Object.entries(DEFAULTS)) {
         if (typeof value === 'number') {

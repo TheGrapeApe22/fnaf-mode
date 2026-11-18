@@ -24,6 +24,14 @@ function remove(file) {
 
 const root = GLib.dir_make_tmp('fnaf-test-XXXXXX');
 try {
+    assert(normalizeConfig().panelTextColor === '#ffffff', 'Default panel color');
+    assert(normalizeConfig({panel: {textColor: '#e34A19'}}).panelTextColor === '#e34A19' &&
+        normalizeConfig({panel: {textColor: '#f00'}}).panelTextColor === '#f00', 'Hex panel colors supported');
+    for (const textColor of ['red; padding: 50px', '#12345', '', null, 123]) {
+        let rejected = false;
+        try { normalizeConfig({panel: {textColor}}); } catch (_) { rejected = true; }
+        assert(rejected, 'Invalid panel colors rejected');
+    }
     assert(normalizeConfig().initialWaitSeconds === 5, 'Default initial wait is five seconds');
     assert(normalizeConfig().jumpscareFirst === false &&
         normalizeConfig({timing: {jumpscareFirst: true}}).jumpscareFirst === true,

@@ -72,6 +72,10 @@ export default class FnafMode extends Extension {
             }
         }
         this._indicatorLabel.text = text;
+        const color = this._lastConfig?.panelTextColor ?? DEFAULTS.panelTextColor;
+        const style = `min-width: 24px; text-align: center; color: ${color};`;
+        if (this._indicatorLabel.get_style() !== style)
+            this._indicatorLabel.set_style(style);
         this._panelToggle.accessible_name = description;
         this._indicator.accessible_name = description;
     }
@@ -119,6 +123,7 @@ export default class FnafMode extends Extension {
     }
 
     _sync() {
+        this._lastConfig = this._config();
         this._clear();
         this._firstEvent = true;
         if (this._settings.get_boolean('active') && !Main.sessionMode.isLocked &&

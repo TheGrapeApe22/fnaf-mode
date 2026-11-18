@@ -28,6 +28,10 @@ Click the indicator to toggle mode; it uses the same command and configured
 activation volume as the terminal. Disabling the whole extension removes the
 indicator.
 
+Set `panel.textColor` in `config.json` to color all indicator text, for example
+`"panel": {"textColor": "#ff5500"}`. Three- and six-digit hex colors are supported;
+the default is `#ffffff`. Config edits are picked up on the next toggle or event.
+
 ## Install
 
 From this folder:
@@ -216,7 +220,7 @@ Edit this repository's [`config.json`](config.json), then run `./deploy.sh` to
 overwrite `~/.config/fnaf-mode/config.json`. You can also edit the installed file
 directly for immediate changes, but the next deployment replaces it. Key settings:
 
-The file has four sections: `timing`, `visuals`, `audio`, and `assets`.
+The file has five sections: `timing`, `visuals`, `audio`, `panel`, and `assets`.
 
 | Setting | Meaning |
 | --- | --- |
@@ -235,6 +239,7 @@ The file has four sections: `timing`, `visuals`, `audio`, and `assets`.
 | `audio.systemVolumePercent` | System output volume set once by on/toggle-on (0–100; default 50) |
 | `audio.fadeInSeconds`, `fadeOutSeconds` | Audio fades |
 | `assets.directory` | Empty string for default media root, or an absolute path / `~/...` |
+| `panel.textColor` | Top-bar circle/countdown color (`#RGB` or `#RRGGBB`; default `#ffffff`) |
 
 Repeated dark flicker bursts continue throughout the image phase. Reduce the gap
 settings for more frequent flickers; increase the burst settings for longer ones.

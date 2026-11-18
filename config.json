@@ -7,6 +7,9 @@
     "eventMinSeconds": 4,
     "eventMaxSeconds": 8
   },
+  "panel": {
+    "textColor": "#060606"
+  },
   "visuals": {
     "flashSeconds": 0.12,
     "flashOpacity": 180,

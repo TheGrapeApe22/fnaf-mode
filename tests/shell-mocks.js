@@ -27,6 +27,7 @@ class Widget extends Signals {
         this.styleHistory ??= [];
         this.styleHistory.push(style);
     }
+    get_style() { return this.style ?? null; }
     ease(props) { this.opacity = props.opacity; }
     destroy() {
         this.destroyed = true;

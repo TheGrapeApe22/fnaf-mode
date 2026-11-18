@@ -14,6 +14,7 @@ extension.enable();
 assert(extension._sources.size === 0, 'Initially inactive');
 assert(extension._indicatorLabel.text === '○' && panel.statusArea['fnaf-mode'] === extension._indicator,
     'Off mode has an open-circle indicator in the top bar');
+assert(extension._indicatorLabel.get_style().includes('color: #ff5500;'), 'Configured off-circle color');
 // Check that the actual click callback delegates to the CLI, without changing system volume.
 const originalSpawn = Gio.Subprocess.new;
 const calls = [];
@@ -49,6 +50,7 @@ const initialConfig = extension._config();
 extension._config = () => ({...initialConfig, initialWaitSeconds: 2.2});
 settings.set_boolean('active', true);
 assert(extension._indicatorLabel.text === '3', 'Countdown rounds remaining seconds up');
+assert(extension._indicatorLabel.get_style().includes('color: #ff5500;'), 'Countdown retains configured color');
 spin(1100);
 assert(extension._indicatorLabel.text === '2' && !extension._overlay,
     'Countdown ticks from the scheduled deadline while desktop remains normal');
@@ -64,6 +66,7 @@ assert(layoutManager.actors.size === 1 && extension._players.size === 3,
     'Animation starts its associated audio plus both global tracks');
 assert(extension._indicatorLabel.text === '●' && !extension._countdownId,
     'Active event displays a filled circle and has no countdown timer');
+assert(extension._indicatorLabel.get_style().includes('color: #ff5500;'), 'Active circle retains configured color');
 assert(extension._overlay.x === 17 && extension._overlay.y === 29, 'Primary monitor positioning');
 assert(extension._image.x === 840 && extension._image.y === 0 &&
     extension._image.width === 1080 && extension._image.height === 1080,
