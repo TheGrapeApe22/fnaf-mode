@@ -142,7 +142,8 @@ export default class FnafMode extends Extension {
         } catch (error) {
             // Retain the previous good settings if a file is being edited or is invalid.
             console.error(`[FNAF Mode] Invalid config: ${error.message}`);
-            return this._lastConfig ?? {...DEFAULTS};
+            return this._lastConfig ?? readConfig(GLib.build_filenamev([
+                GLib.path_get_dirname(this._configPath), 'default.json']));
         }
     }
 

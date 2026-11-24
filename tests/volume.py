@@ -39,10 +39,17 @@ class ActivationVolumeTests(unittest.TestCase):
     def test_config_default_override_and_validation(self):
         with tempfile.TemporaryDirectory(prefix='fnaf-volume-') as tmp:
             path = Path(tmp) / 'config.json'
+            defaults = json.loads((ROOT / 'default.json').read_text())
+            defaults['audio']['systemVolumePercent'] = 64
+            defaults['assets']['directory'] = str(Path(tmp) / 'library')
+            path.with_name('default.json').write_text(json.dumps(defaults))
             with patch.dict(GLOBALS, CONFIG=path):
-                self.assertEqual(CLI['activation_volume'](), 50)
+                self.assertEqual(CLI['activation_volume'](), 64)
+                self.assertEqual(CLI['asset_root'](), Path(tmp) / 'library')
                 path.write_text('{}')
-                self.assertEqual(CLI['activation_volume'](), 50)
+                self.assertEqual(CLI['activation_volume'](), 64)
+                path.write_text('{"audio":{"enabled":false}}')
+                self.assertEqual(CLI['activation_volume'](), 64)
                 for value in [0, 35.5, 50, 100]:
                     path.write_text(json.dumps({'audio': {'systemVolumePercent': value}}))
                     self.assertEqual(CLI['activation_volume'](), value)

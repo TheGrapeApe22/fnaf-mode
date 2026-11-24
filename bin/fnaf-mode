@@ -21,8 +21,24 @@ def run(argv, **kwargs):
     return subprocess.run(argv, check=True, text=True, **kwargs)
 
 
+def merge_config(defaults, overrides):
+    if not isinstance(defaults, dict) or not isinstance(overrides, dict):
+        raise ValueError('Config files must contain JSON objects')
+    merged = defaults | overrides
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(defaults.get(key), dict):
+            merged[key] = merge_config(defaults[key], value)
+    return merged
+
+
+def load_config():
+    defaults = json.loads(CONFIG.with_name('default.json').read_text())
+    overrides = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
+    return merge_config(defaults, overrides)
+
+
 def asset_root():
-    config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
+    config = load_config()
     assets = config.get('assets', {})
     if not isinstance(assets, dict):
         raise ValueError('assets must be a JSON object')
@@ -38,10 +54,10 @@ def setting(*args):
 
 
 def activation_volume():
-    config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
+    config = load_config()
     if not isinstance(config, dict) or not isinstance(config.get('audio', {}), dict):
         raise ValueError('Config and audio must be JSON objects')
-    volume = config.get('audio', {}).get('systemVolumePercent', 50)
+    volume = config['audio']['systemVolumePercent']
     if (isinstance(volume, bool) or not isinstance(volume, (int, float)) or
             not math.isfinite(volume) or not 0 <= volume <= 100):
         raise ValueError('audio.systemVolumePercent must be a number from 0 to 100')

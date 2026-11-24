@@ -41,7 +41,8 @@ indicator.
 
 Set `panel.textColor` in `config.json` to color all indicator text, for example
 `"panel": {"textColor": "#ff5500"}`. Three- and six-digit hex colors are supported;
-the default is `#ffffff`. Config edits are picked up on the next toggle or event.
+the fallback color comes from `default.json`. Config edits are picked up on the
+next toggle or event.
 
 ## Install
 
@@ -68,7 +69,7 @@ If `~/.local/bin` is on your PATH, use just `fnaf-mode`. Otherwise add
 `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc`.
 
 `fnaf-mode on` sets the default system output volume once to
-`audio.systemVolumePercent` (50% by default). Toggling on does the same. You can
+`audio.systemVolumePercent` (inherited from `default.json` when omitted). Toggling on does the same. You can
 adjust volume freely afterward; events do not reset it. Turning mode off leaves
 the volume as-is, and mute state is preserved. This uses `wpctl` (WirePlumber),
 or `pactl` when `wpctl` is unavailable. This happens when the terminal command
@@ -78,7 +79,7 @@ activates the mode, not when GNOME restores it after login or unlocking.
 extension. The extension is initially inactive; once enabled, its on/off setting
 persists across logins. Locking the session pauses effects; unlocking starts the
 initial wait again. Each deployment overwrites the installed config with this
-repository's `config.json` and mirrors its `assets/` folder into the installed
+repository's `default.json` and `config.json`, and mirrors its `assets/` folder into the installed
 media library. Changed files are replaced; installed files and folders absent
 from the repository are deleted, including media added only to the installed copy.
 GNOME caches extension modules, so disabling/re-enabling alone does not reliably
@@ -228,8 +229,24 @@ fnaf-mode assets   # print media library path
 ```
 
 Edit this repository's [`config.json`](config.json), then run `./deploy.sh` to
-overwrite `~/.config/fnaf-mode/config.json`. You can also edit the installed file
-directly for immediate changes, but the next deployment replaces it. Key settings:
+install it and [`default.json`](default.json) into `~/.config/fnaf-mode/`.
+`default.json` contains the complete settings; `config.json` can contain only your
+overrides. Objects merge recursively: overriding one field in `audio`, for example,
+keeps the other audio fields from `default.json`. Explicit `false`, `0`, and empty
+strings override defaults. An empty or absent `config.json` uses all file defaults.
+Both the extension and terminal command use these rules.
+
+For example, this entire `config.json` changes only the cooldown and panel color:
+
+```json
+{
+  "timing": {"intervalMinSeconds": 10, "intervalMaxSeconds": 20},
+  "panel": {"textColor": "#ff5500"}
+}
+```
+
+Both installed files are re-read when settings are loaded. You can edit them
+directly for immediate changes, but the next deployment replaces them. Key settings:
 
 The file has five sections: `timing`, `visuals`, `audio`, `panel`, and `assets`.
 
@@ -247,10 +264,10 @@ The file has five sections: `timing`, `visuals`, `audio`, `panel`, and `assets`.
 | `visuals.imageOpacity`, `animationFps` | Visual opacity (0–255) and frame rate (1–30) |
 | `audio.enabled` | Allow audio |
 | `audio.volume` | Per-track mpv volume (0–100) |
-| `audio.systemVolumePercent` | System output volume set once by on/toggle-on (0–100; default 50) |
+| `audio.systemVolumePercent` | System output volume set once by on/toggle-on (0–100) |
 | `audio.fadeInSeconds`, `fadeOutSeconds` | Audio fades |
 | `assets.directory` | Empty string for default media root, or an absolute path / `~/...` |
-| `panel.textColor` | Top-bar circle/countdown color (`#RGB` or `#RRGGBB`; default `#ffffff`) |
+| `panel.textColor` | Top-bar circle/countdown color (`#RGB` or `#RRGGBB`) |
 
 Repeated dark flicker bursts continue throughout the image phase. Reduce the gap
 settings for more frequent flickers; increase the burst settings for longer ones.
@@ -260,7 +277,7 @@ The installed config and media are re-read between events. Changes made directly
 to the installed config take effect without deployment; edits to the repository
 config require `./deploy.sh`. Toggle off/on to immediately start a new wait using
 edited timing. Invalid config logs an error and retains the last good values.
-Missing keys use defaults (5–50 seconds between events, 2–4 seconds per event).
+Missing keys inherit their values from `default.json`.
 Use the grouped config format shown in `config.json`. If you shorten still-image events, transition phases
 scale down to leave time for the image. Set `visuals.flashOpacity` to 0 to suppress the white
 flash.

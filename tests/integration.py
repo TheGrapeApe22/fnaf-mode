@@ -58,6 +58,7 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     assets = home / 'data/fnaf-mode/assets'
     assert run([command, 'config'], env).stdout.strip() == str(config)
     assert run([command, 'assets'], env).stdout.strip() == str(assets)
+    assert (config.parent / 'default.json').read_bytes() == (ROOT / 'default.json').read_bytes()
     warmup = home / 'data/gnome-shell/extensions/fnaf-mode@local/audio/warmup.wav'
     with wave.open(str(warmup), 'rb') as wav:
         assert abs(wav.getnframes() / wav.getframerate() - 0.15) < 0.001
@@ -73,7 +74,7 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     # Simulate actual source deletions and updates without changing repository assets.
     fixture = home / 'deploy-source'
     fixture.mkdir()
-    for name in ['deploy.sh', 'config.json']:
+    for name in ['deploy.sh', 'default.json', 'config.json']:
         shutil.copyfile(ROOT / name, fixture / name)
     for name in ['bin', 'extension']:
         (fixture / name).symlink_to(ROOT / name, target_is_directory=True)
@@ -152,7 +153,9 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
     config.write_text(json.dumps({'timing': {'initialWaitSeconds': 0.8,
                                            'intervalMinSeconds': 0.5, 'intervalMaxSeconds': 0.5,
                                            'eventMinSeconds': 2, 'eventMaxSeconds': 2},
-                                 'visuals': {'flashSeconds': 0, 'blackoutSeconds': 0, 'fadeBackSeconds': 0},
+                                 'visuals': {'animationFps': 12, 'flashSeconds': 0,
+                                             'blackoutSeconds': 0, 'fadeBackSeconds': 0},
+                                 'audio': {'fadeInSeconds': 0.3, 'fadeOutSeconds': 0.65},
                                  'panel': {'textColor': '#ff5500'},
                                  'assets': {'directory': str(fixture_assets)}}))
     # Load the actual extension with just compositor-specific imports substituted.

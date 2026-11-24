@@ -1,0 +1,37 @@
+{
+  "timing": {
+    "initialWaitSeconds": 5,
+    "jumpscareFirst": false,
+    "intervalMinSeconds": 5,
+    "intervalMaxSeconds": 5,
+    "eventMinSeconds": 4,
+    "eventMaxSeconds": 8
+  },
+  "panel": {
+    "textColor": "#060606"
+  },
+  "visuals": {
+    "animationFps": 24,
+    "flashSeconds": 0.12,
+    "flashOpacity": 180,
+    "flickerSeconds": 0.45,
+    "flickerStepMs": 90,
+    "blackoutSeconds": 0.2,
+    "fadeBackSeconds": 0.65,
+    "imageOpacity": 255,
+    "flickerGapMinSeconds": 0.12,
+    "flickerGapMaxSeconds": 0.3,
+    "flickerBurstMinSeconds": 0.12,
+    "flickerBurstMaxSeconds": 0.28
+  },
+  "audio": {
+    "enabled": true,
+    "volume": 45,
+    "systemVolumePercent": 100,
+    "fadeInSeconds": 0,
+    "fadeOutSeconds": 0.65
+  },
+  "assets": {
+    "directory": ""
+  }
+}

@@ -18,7 +18,7 @@ export const DEFAULTS = Object.freeze({
     panelTextColor: '#ffffff',
 });
 
-export function normalizeConfig(raw = {}) {
+export function normalizeConfig(raw = {}, defaults = DEFAULTS) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw))
         throw new Error('Config must be a JSON object');
     for (const section of ['timing', 'visuals', 'audio', 'panel', 'assets']) {
@@ -37,8 +37,8 @@ export function normalizeConfig(raw = {}) {
             throw new Error('panel.textColor must be a hex color such as #ffffff or #f00');
         input.panelTextColor = raw.panel.textColor;
     }
-    const c = {...DEFAULTS};
-    for (const [key, value] of Object.entries(DEFAULTS)) {
+    const c = {...defaults};
+    for (const [key, value] of Object.entries(defaults)) {
         if (typeof value === 'number') {
             if (typeof input[key] === 'number' && Number.isFinite(input[key]))
                 c[key] = Math.max(0, input[key]);
@@ -64,16 +64,29 @@ export function normalizeConfig(raw = {}) {
     return c;
 }
 
-function readJson(path) {
+function readJson(path, required = false) {
     const file = Gio.File.new_for_path(path);
-    if (!file.query_exists(null))
+    if (!required && !file.query_exists(null))
         return {};
     const [, bytes] = file.load_contents(null);
     return JSON.parse(new TextDecoder().decode(bytes));
 }
 
+export function mergeConfig(defaults, overrides) {
+    const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+    if (!object(defaults) || !object(overrides))
+        throw new Error('Config files must contain JSON objects');
+    const merged = {...defaults, ...overrides};
+    for (const [key, value] of Object.entries(overrides)) {
+        if (object(value) && object(defaults[key]))
+            merged[key] = mergeConfig(defaults[key], value);
+    }
+    return merged;
+}
+
 export function readConfig(path) {
-    return normalizeConfig(readJson(path));
+    const defaults = readJson(GLib.build_filenamev([GLib.path_get_dirname(path), 'default.json']), true);
+    return normalizeConfig(mergeConfig(defaults, readJson(path)), normalizeConfig(defaults));
 }
 
 export function randomBetween(min, max) {

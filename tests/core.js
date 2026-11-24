@@ -185,8 +185,30 @@ try {
         assert(new EventBag().draw(assets.visuals, assets.visuals[0].id).id !== assets.visuals[0].id, 'No repeat');
     assert(new EventBag().draw([assets.visuals[0]], assets.visuals[0].id) === assets.visuals[0], 'Single visual');
     assert(scanAssets(`${root}/missing`).visuals.length === 0, 'Missing library');
+    const [, defaultBytes] = GLib.file_get_contents('default.json');
+    const fileDefaults = JSON.parse(new TextDecoder().decode(defaultBytes));
+    fileDefaults.timing.initialWaitSeconds = 12;
+    fileDefaults.timing.jumpscareFirst = true;
+    fileDefaults.audio.volume = 63;
+    fileDefaults.panel.textColor = '#123456';
+    fileDefaults.assets.directory = '/tmp/fnaf-test-library';
+    write(`${root}/default.json`, JSON.stringify(fileDefaults));
+    assert(readConfig(`${root}/config.json`).initialWaitSeconds === 12,
+        'Missing config reads default.json');
     write(`${root}/config.json`, '{"audio": {"enabled": false}}');
-    assert(!readConfig(`${root}/config.json`).soundEnabled, 'Read supplied config');
+    const inheritedConfig = readConfig(`${root}/config.json`);
+    assert(!inheritedConfig.soundEnabled && inheritedConfig.soundVolume === 63 &&
+        inheritedConfig.panelTextColor === '#123456' && inheritedConfig.assetDirectory === '/tmp/fnaf-test-library',
+    'Missing fields and sections inherit file defaults, including siblings in a partially overridden section');
+    write(`${root}/config.json`, JSON.stringify({timing: {initialWaitSeconds: 0, jumpscareFirst: false},
+        audio: {volume: 0}, assets: {directory: ''}}));
+    const explicit = readConfig(`${root}/config.json`);
+    assert(explicit.initialWaitSeconds === 0 && !explicit.jumpscareFirst &&
+        explicit.soundVolume === 0 && explicit.assetDirectory === '',
+    'Explicit zero, false and empty strings override defaults');
+    fileDefaults.panel.textColor = '#654321';
+    write(`${root}/default.json`, JSON.stringify(fileDefaults));
+    assert(readConfig(`${root}/config.json`).panelTextColor === '#654321', 'Default edits are read dynamically');
     write(`${root}/config.json`, '{broken');
     let rejected = false;
     try { readConfig(`${root}/config.json`); } catch (_) { rejected = true; }

@@ -67,7 +67,8 @@ def mirror_assets(src, dst):
 
 mirror_assets(source_assets, assets)
 config.mkdir(parents=True, exist_ok=True)
-shutil.copy2(source / 'config.json', config / 'config.json')
+for name in ['default.json', 'config.json']:
+    shutil.copy2(source / name, config / name)
 bin_dir.mkdir(parents=True, exist_ok=True)
 shutil.copy2(source / 'bin/fnaf-mode', bin_dir / 'fnaf-mode')
 (bin_dir / 'fnaf-mode').chmod(0o755)
