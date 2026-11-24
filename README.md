@@ -77,6 +77,11 @@ the volume as-is, and mute state is preserved. This uses `wpctl` (WirePlumber),
 or `pactl` when `wpctl` is unavailable. This happens when the terminal command
 activates the mode, not when GNOME restores it after login or unlocking.
 
+`fnaf-mode on` also runs `powerprofilesctl set performance` once. Toggle-on and
+the top-bar button use the same activation path. Turning mode off leaves the power
+profile unchanged. If `powerprofilesctl` is missing or performance mode cannot be
+selected, activation reports the error and does not turn the mode on.
+
 `deploy.sh --no-enable` installs files without asking GNOME to enable the
 extension. The extension is initially inactive; once enabled, its on/off setting
 persists across logins. Locking the session pauses effects; unlocking starts the

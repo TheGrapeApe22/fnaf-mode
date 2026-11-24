@@ -22,17 +22,20 @@ class ActivationVolumeTests(unittest.TestCase):
                                        ('off', True, 0)]:
             with self.subTest(command=command, active=active):
                 volume = Mock()
+                performance = Mock()
                 def setting(*args):
                     if args[0] == 'get' and args[1] == CLI['SCHEMA']:
                         return str(active).lower()
                     return 'false'
                 with patch.dict(GLOBALS, setting=setting, run=Mock(),
-                                activation_volume=lambda: 37, set_output_volume=volume), \
+                                activation_volume=lambda: 37, set_output_volume=volume,
+                                set_performance_profile=performance), \
                         patch('pathlib.Path.exists', return_value=True), \
                         patch('sys.argv', ['fnaf-mode', command]), \
                         contextlib.redirect_stdout(io.StringIO()):
                     CLI['main']()
                 self.assertEqual(volume.call_count, count)
+                self.assertEqual(performance.call_count, count)
                 if count:
                     volume.assert_called_once_with(37)
 
@@ -73,6 +76,7 @@ class ActivationVolumeTests(unittest.TestCase):
     def test_volume_failure_does_not_activate_mode(self):
         settings = Mock(return_value='false')
         with patch.dict(GLOBALS, setting=settings, run=Mock(), activation_volume=lambda: 50,
+                        set_performance_profile=Mock(),
                         set_output_volume=Mock(side_effect=ValueError('Audio unavailable'))), \
                 patch('pathlib.Path.exists', return_value=True), \
                 patch('sys.argv', ['fnaf-mode', 'on']):
@@ -86,6 +90,32 @@ class ActivationVolumeTests(unittest.TestCase):
                 patch('shutil.which', return_value='/mock/wpctl'):
             with self.assertRaisesRegex(ValueError, 'No default sink'):
                 CLI['set_output_volume'](50)
+
+    def test_performance_command_and_failures(self):
+        execute = Mock()
+        with patch.dict(GLOBALS, run=execute), patch('shutil.which', return_value='/mock/powerprofilesctl'):
+            CLI['set_performance_profile']()
+        execute.assert_called_once_with(['/mock/powerprofilesctl', 'set', 'performance'], capture_output=True)
+        with patch('shutil.which', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'requires powerprofilesctl'):
+                CLI['set_performance_profile']()
+        error = subprocess.CalledProcessError(1, ['powerprofilesctl'], stderr='Performance unavailable')
+        with patch.dict(GLOBALS, run=Mock(side_effect=error)), \
+                patch('shutil.which', return_value='/mock/powerprofilesctl'):
+            with self.assertRaisesRegex(ValueError, 'Performance unavailable'):
+                CLI['set_performance_profile']()
+
+    def test_performance_failure_does_not_activate_mode(self):
+        settings, volume = Mock(return_value='false'), Mock()
+        with patch.dict(GLOBALS, setting=settings, run=Mock(), activation_volume=lambda: 50,
+                        set_output_volume=volume,
+                        set_performance_profile=Mock(side_effect=ValueError('Performance unavailable'))), \
+                patch('pathlib.Path.exists', return_value=True), \
+                patch('sys.argv', ['fnaf-mode', 'on']):
+            with self.assertRaisesRegex(ValueError, 'Performance unavailable'):
+                CLI['main']()
+        volume.assert_not_called()
+        self.assertFalse(any(call.args[0] == 'set' for call in settings.call_args_list))
 
 
 if __name__ == '__main__':

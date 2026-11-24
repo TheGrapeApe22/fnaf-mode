@@ -9,7 +9,7 @@
   },
   "panel": {
     "onColor": "#060606",
-    "offColor": "#404040"
+    "offColor": "#808080"
   },
   "visuals": {
     "animationFps": 24,
