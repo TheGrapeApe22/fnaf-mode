@@ -1,6 +1,6 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import {DEFAULTS, normalizeConfig, readConfig, scanAssets, choose, timeline,
+import {DEFAULTS, normalizeConfig, readConfig, scanAssets, EventBag, timeline,
     readAudioLinks, animationTimeline, frameIndex, imageAlignment, imageGeometry} from '../extension/core.js';
 
 function assert(value, message) {
@@ -38,10 +38,36 @@ try {
         'Jumpscare-first setting defaults off and accepts a boolean');
     const mixed = [{id: 'still', type: 'image'}, {id: 'scare', type: 'animation'}];
     for (let i = 0; i < 20; i++)
-        assert(choose(mixed, null, true).id === 'scare', 'First-event selection excludes still images');
-    assert(choose(mixed, 'scare', true).id === 'scare',
+        assert(new EventBag().draw(mixed, null, true).id === 'scare', 'First-event selection excludes still images');
+    assert(new EventBag().draw(mixed, 'scare', true).id === 'scare',
         'Only available animation can repeat across activations');
-    assert(choose([mixed[0]], null, true) === null, 'No animation means wait instead of showing an image');
+    assert(new EventBag().draw([mixed[0]], null, true) === null, 'No animation means wait instead of showing an image');
+    const seven = Array.from({length: 7}, (_, i) => ({id: String(i), type: i < 2 ? 'animation' : 'image'}));
+    const bag = new EventBag();
+    let previous = null;
+    for (let cycle = 0; cycle < 100; cycle++) {
+        const drawn = [];
+        for (let i = 0; i < seven.length; i++) {
+            const event = bag.draw(seven, previous, cycle === 0 && i === 0);
+            assert(event.id !== previous, 'No immediate repeat, including across bag boundaries');
+            if (cycle === 0 && i === 0)
+                assert(event.type === 'animation', 'Jumpscare-first draws from the same bag');
+            drawn.push(event.id);
+            previous = event.id;
+        }
+        assert(new Set(drawn).size === 7, 'Each bag contains every event exactly once');
+    }
+    const liveBag = new EventBag();
+    const initial = liveBag.draw(seven);
+    const updated = seven.toReversed().map(item => ({...item, updated: true}));
+    const afterEdit = Array.from({length: 6}, () => liveBag.draw(updated));
+    assert(afterEdit.every(item => item.updated && item.id !== initial.id) &&
+        new Set(afterEdit.map(item => item.id)).size === 6, 'Metadata/reordering edits do not reset the bag');
+    const added = [...seven, {id: 'new', type: 'image'}];
+    assert(new Set(Array.from({length: 8}, () => liveBag.draw(added).id)).size === 8,
+        'Adding an event refreshes the bag');
+    assert(Array.from({length: 6}, () => liveBag.draw(seven.slice(1))).every(item => item.id !== '0'),
+        'Removed events are never drawn');
     assert(normalizeConfig({timing: {initialWaitSeconds: 0}}).initialWaitSeconds === 0,
         'Initial wait can be disabled');
     assert(normalizeConfig({timing: {initialWaitSeconds: -1}}).initialWaitSeconds === 0,
@@ -154,10 +180,10 @@ try {
         try { readAudioLinks(root); } catch (_) { rejected = true; }
         assert(rejected, 'Invalid mapping rejected');
     }
-    assert(choose([], null) === null, 'Empty library');
+    assert(new EventBag().draw([], null) === null, 'Empty library');
     for (let i = 0; i < 50; i++)
-        assert(choose(assets.visuals, assets.visuals[0].id).id !== assets.visuals[0].id, 'No repeat');
-    assert(choose([assets.visuals[0]], assets.visuals[0].id) === assets.visuals[0], 'Single visual');
+        assert(new EventBag().draw(assets.visuals, assets.visuals[0].id).id !== assets.visuals[0].id, 'No repeat');
+    assert(new EventBag().draw([assets.visuals[0]], assets.visuals[0].id) === assets.visuals[0], 'Single visual');
     assert(scanAssets(`${root}/missing`).visuals.length === 0, 'Missing library');
     write(`${root}/config.json`, '{"audio": {"enabled": false}}');
     assert(!readConfig(`${root}/config.json`).soundEnabled, 'Read supplied config');

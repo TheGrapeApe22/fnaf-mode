@@ -6,7 +6,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
-import {DEFAULTS, readConfig, scanAssets, choose, randomBetween, timeline,
+import {DEFAULTS, readConfig, scanAssets, EventBag, randomBetween, timeline,
     readAudioLinks, animationTimeline, frameIndex, imageAlignment, imageGeometry} from './core.js';
 
 export default class FnafMode extends Extension {
@@ -130,6 +130,7 @@ export default class FnafMode extends Extension {
         this._lastConfig = this._config();
         this._clear();
         this._firstEvent = true;
+        this._bag = new EventBag();
         if (this._settings.get_boolean('active') && !Main.sessionMode.isLocked &&
             !Main.sessionMode.isGreeter && Main.layoutManager.primaryMonitor)
             this._schedule(true);
@@ -188,8 +189,13 @@ export default class FnafMode extends Extension {
         const assets = scanAssets(root, links);
         for (const warning of assets.warnings)
             console.warn(`[FNAF Mode] ${warning}`);
+        const monitor = Main.layoutManager.primaryMonitor;
+        if (!monitor) {
+            this._updateIndicator();
+            return;
+        }
         const animationOnly = this._firstEvent && c.jumpscareFirst;
-        const visual = choose(assets.visuals, this._previousVisual, animationOnly);
+        const visual = this._bag.draw(assets.visuals, this._previousVisual, animationOnly);
         if (!visual) {
             if (!this._warnedEmpty) {
                 console.warn(animationOnly
@@ -202,11 +208,6 @@ export default class FnafMode extends Extension {
         }
         this._warnedEmpty = false;
         this._previousVisual = visual.id;
-        const monitor = Main.layoutManager.primaryMonitor;
-        if (!monitor) {
-            this._updateIndicator();
-            return;
-        }
         this._firstEvent = false;
         this._overlay = new St.Widget({reactive: false, can_focus: false,
             x: monitor.x, y: monitor.y, width: monitor.width, height: monitor.height,
@@ -363,5 +364,6 @@ export default class FnafMode extends Extension {
         this._lastConfig = null;
         this._previousVisual = null;
         this._lastAudioLinks = null;
+        this._bag = null;
     }
 }

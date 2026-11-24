@@ -21,8 +21,13 @@ If no animation is available, it waits for animation frames rather than showing
 an image. The initial wait still applies.
 Still-image duration is also configurable; animations play once at
 `visuals.animationFps`, then go black and fade back to desktop. Opening flashes
-and repeated flicker bursts overlay the images. A different visual is chosen each
-time when at least two exist. `assets/audio_links.json` selects the complete set
+and repeated flicker bursts overlay the images. Events use a shuffled bag (7-bag
+when there are seven visuals): every image and animation appears exactly once per
+bag before reshuffling, with no immediate repeat across bags when at least two
+events exist. `jumpscareFirst` draws an animation from the same first bag, so it
+does not receive an extra turn. Bags restart on activation/resume or when events
+are added/removed; audio-link edits do not reset them.
+`assets/audio_links.json` selects the complete set
 of tracks for each image or animation. All listed tracks start together with the
 visual and fade out with the ending. Supply your own media; nothing is downloaded.
 Nothing controls physical lights or brightness.

@@ -80,11 +80,43 @@ export function randomBetween(min, max) {
     return min + Math.random() * (max - min);
 }
 
-export function choose(items, previous = null, animationOnly = false) {
-    let candidates = animationOnly ? items.filter(item => item.type === 'animation') : items;
-    if (candidates.length > 1)
-        candidates = candidates.filter(item => item.id !== previous);
-    return candidates[Math.floor(Math.random() * candidates.length)] ?? null;
+export class EventBag {
+    constructor() {
+        this._signature = null;
+        this._remaining = [];
+    }
+
+    draw(items, previous = null, animationOnly = false) {
+        // Store IDs, not asset objects, so audio/metadata edits apply immediately.
+        const byId = new Map(items.map(item => [item.id, item]));
+        const ids = [...byId.keys()];
+        const signature = JSON.stringify([...ids].sort());
+        if (signature !== this._signature) {
+            this._signature = signature;
+            this._remaining = [];
+        }
+        if (!this._remaining.length) {
+            this._remaining = [...ids];
+            for (let i = this._remaining.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [this._remaining[i], this._remaining[j]] = [this._remaining[j], this._remaining[i]];
+            }
+        }
+        const eligible = [];
+        for (let i = 0; i < this._remaining.length; i++) {
+            if (!animationOnly || byId.get(this._remaining[i]).type === 'animation')
+                eligible.push(i);
+        }
+        if (!eligible.length)
+            return null;
+        const index = eligible.at(-1);
+        // Avoid immediate repeats at bag boundaries (unless only one choice exists).
+        if (this._remaining[index] === previous && eligible.length > 1) {
+            const other = eligible[Math.floor(Math.random() * (eligible.length - 1))];
+            [this._remaining[index], this._remaining[other]] = [this._remaining[other], this._remaining[index]];
+        }
+        return byId.get(this._remaining.splice(index, 1)[0]);
+    }
 }
 
 export function imageAlignment(filename, fallback = {x: 0.5, y: 0.5}) {
