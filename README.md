@@ -1,4 +1,6 @@
 # FNAF Mode
+![](assets/readme/1.png)
+![](assets/readme/2.png)
 
 A GNOME Shell 50 extension for Ubuntu 26.04 / Wayland. `fnaf-mode` toggles a
 click-through overlay on the primary screen, including over fullscreen apps.
