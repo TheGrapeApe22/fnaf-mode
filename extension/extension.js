@@ -61,7 +61,8 @@ export default class FnafMode extends Extension {
     _updateIndicator() {
         let text = '○';
         let description = 'FNAF mode off. Click to turn on.';
-        if (this._settings.get_boolean('active')) {
+        const active = this._settings.get_boolean('active');
+        if (active) {
             if (this._nextEventAt !== null) {
                 const seconds = Math.max(0, Math.ceil((this._nextEventAt - GLib.get_monotonic_time()) / 1000000));
                 text = String(seconds);
@@ -72,7 +73,8 @@ export default class FnafMode extends Extension {
             }
         }
         this._indicatorLabel.text = text;
-        const color = this._lastConfig?.panelTextColor ?? DEFAULTS.panelTextColor;
+        const colorKey = active ? 'panelOnColor' : 'panelOffColor';
+        const color = this._lastConfig?.[colorKey] ?? DEFAULTS[colorKey];
         const style = `min-width: 24px; text-align: center; color: ${color};`;
         if (this._indicatorLabel.get_style() !== style)
             this._indicatorLabel.set_style(style);

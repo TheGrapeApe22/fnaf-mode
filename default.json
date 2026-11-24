@@ -8,7 +8,8 @@
     "eventMaxSeconds": 8
   },
   "panel": {
-    "textColor": "#060606"
+    "onColor": "#060606",
+    "offColor": "#404040"
   },
   "visuals": {
     "animationFps": 24,

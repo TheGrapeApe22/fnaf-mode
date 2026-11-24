@@ -156,7 +156,7 @@ with tempfile.TemporaryDirectory(prefix='fnaf-integration-') as tmp:
                                  'visuals': {'animationFps': 12, 'flashSeconds': 0,
                                              'blackoutSeconds': 0, 'fadeBackSeconds': 0},
                                  'audio': {'fadeInSeconds': 0.3, 'fadeOutSeconds': 0.65},
-                                 'panel': {'textColor': '#ff5500'},
+                                 'panel': {'onColor': '#ff5500', 'offColor': '#3377cc'},
                                  'assets': {'directory': str(fixture_assets)}}))
     # Load the actual extension with just compositor-specific imports substituted.
     module = (ROOT / 'extension/extension.js').read_text()

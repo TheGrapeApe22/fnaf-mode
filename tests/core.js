@@ -24,14 +24,18 @@ function remove(file) {
 
 const root = GLib.dir_make_tmp('fnaf-test-XXXXXX');
 try {
-    assert(normalizeConfig().panelTextColor === '#ffffff', 'Default panel color');
-    assert(normalizeConfig({panel: {textColor: '#e34A19'}}).panelTextColor === '#e34A19' &&
-        normalizeConfig({panel: {textColor: '#f00'}}).panelTextColor === '#f00', 'Hex panel colors supported');
-    for (const textColor of ['red; padding: 50px', '#12345', '', null, 123]) {
+    assert(normalizeConfig().panelOnColor === '#ffffff', 'Default panel color');
+    assert(normalizeConfig({panel: {onColor: '#e34A19'}}).panelOnColor === '#e34A19' &&
+        normalizeConfig({panel: {onColor: '#f00'}}).panelOnColor === '#f00', 'Hex panel colors supported');
+    for (const onColor of ['red; padding: 50px', '#12345', '', null, 123]) {
         let rejected = false;
-        try { normalizeConfig({panel: {textColor}}); } catch (_) { rejected = true; }
+        try { normalizeConfig({panel: {onColor}}); } catch (_) { rejected = true; }
         assert(rejected, 'Invalid panel colors rejected');
     }
+    assert(normalizeConfig({panel: {offColor: '#345'}}).panelOffColor === '#345', 'Off color is configurable independently');
+    let invalidOffColor = false;
+    try { normalizeConfig({panel: {offColor: 'invalid'}}); } catch (_) { invalidOffColor = true; }
+    assert(invalidOffColor, 'Invalid off color rejected');
     assert(normalizeConfig().initialWaitSeconds === 5, 'Default initial wait is five seconds');
     assert(normalizeConfig().jumpscareFirst === false &&
         normalizeConfig({timing: {jumpscareFirst: true}}).jumpscareFirst === true,
@@ -190,7 +194,8 @@ try {
     fileDefaults.timing.initialWaitSeconds = 12;
     fileDefaults.timing.jumpscareFirst = true;
     fileDefaults.audio.volume = 63;
-    fileDefaults.panel.textColor = '#123456';
+    fileDefaults.panel.onColor = '#123456';
+    fileDefaults.panel.offColor = '#abcdef';
     fileDefaults.assets.directory = '/tmp/fnaf-test-library';
     write(`${root}/default.json`, JSON.stringify(fileDefaults));
     assert(readConfig(`${root}/config.json`).initialWaitSeconds === 12,
@@ -198,7 +203,7 @@ try {
     write(`${root}/config.json`, '{"audio": {"enabled": false}}');
     const inheritedConfig = readConfig(`${root}/config.json`);
     assert(!inheritedConfig.soundEnabled && inheritedConfig.soundVolume === 63 &&
-        inheritedConfig.panelTextColor === '#123456' && inheritedConfig.assetDirectory === '/tmp/fnaf-test-library',
+        inheritedConfig.panelOnColor === '#123456' && inheritedConfig.assetDirectory === '/tmp/fnaf-test-library',
     'Missing fields and sections inherit file defaults, including siblings in a partially overridden section');
     write(`${root}/config.json`, JSON.stringify({timing: {initialWaitSeconds: 0, jumpscareFirst: false},
         audio: {volume: 0}, assets: {directory: ''}}));
@@ -206,9 +211,12 @@ try {
     assert(explicit.initialWaitSeconds === 0 && !explicit.jumpscareFirst &&
         explicit.soundVolume === 0 && explicit.assetDirectory === '',
     'Explicit zero, false and empty strings override defaults');
-    fileDefaults.panel.textColor = '#654321';
+    fileDefaults.panel.onColor = '#654321';
     write(`${root}/default.json`, JSON.stringify(fileDefaults));
-    assert(readConfig(`${root}/config.json`).panelTextColor === '#654321', 'Default edits are read dynamically');
+    assert(readConfig(`${root}/config.json`).panelOnColor === '#654321', 'Default edits are read dynamically');
+    write(`${root}/config.json`, '{"panel":{"onColor":"#456789"}}');
+    assert(readConfig(`${root}/config.json`).panelOnColor === '#456789' &&
+        readConfig(`${root}/config.json`).panelOffColor === '#abcdef', 'On color override inherits default off color');
     write(`${root}/config.json`, '{broken');
     let rejected = false;
     try { readConfig(`${root}/config.json`); } catch (_) { rejected = true; }

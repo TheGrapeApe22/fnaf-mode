@@ -15,7 +15,7 @@ export const DEFAULTS = Object.freeze({
     soundEnabled: true,
     soundVolume: 45, soundFadeInSeconds: 0.3, soundFadeOutSeconds: 0.65,
     assetDirectory: '',
-    panelTextColor: '#ffffff',
+    panelOnColor: '#ffffff', panelOffColor: '#ffffff',
 });
 
 export function normalizeConfig(raw = {}, defaults = DEFAULTS) {
@@ -32,10 +32,12 @@ export function normalizeConfig(raw = {}, defaults = DEFAULTS) {
     }
     if (raw.assets && 'directory' in raw.assets)
         input.assetDirectory = raw.assets.directory;
-    if (raw.panel && 'textColor' in raw.panel) {
-        if (typeof raw.panel.textColor !== 'string' || !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(raw.panel.textColor))
-            throw new Error('panel.textColor must be a hex color such as #ffffff or #f00');
-        input.panelTextColor = raw.panel.textColor;
+    for (const key of ['onColor', 'offColor']) {
+        if (raw.panel && key in raw.panel) {
+            if (typeof raw.panel[key] !== 'string' || !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(raw.panel[key]))
+                throw new Error(`panel.${key} must be a hex color such as #ffffff or #f00`);
+            input[`panel${key[0].toUpperCase()}${key.slice(1)}`] = raw.panel[key];
+        }
     }
     const c = {...defaults};
     for (const [key, value] of Object.entries(defaults)) {

@@ -14,7 +14,7 @@ extension.enable();
 assert(extension._sources.size === 0, 'Initially inactive');
 assert(extension._indicatorLabel.text === '○' && panel.statusArea['fnaf-mode'] === extension._indicator,
     'Off mode has an open-circle indicator in the top bar');
-assert(extension._indicatorLabel.get_style().includes('color: #ff5500;'), 'Configured off-circle color');
+assert(extension._indicatorLabel.get_style().includes('color: #3377cc;'), 'Configured off-circle color');
 // Check that the actual click callback delegates to the CLI, without changing system volume.
 const originalSpawn = Gio.Subprocess.new;
 const calls = [];
@@ -43,6 +43,7 @@ try {
     completeToggle();
     assert(!settings.active && extension._indicatorLabel.text === '○' && !extension._countdownId,
         'Click off restores the circle and stops the countdown');
+    assert(extension._indicatorLabel.get_style().includes('color: #3377cc;'), 'Click off applies offColor');
 } finally {
     Gio.Subprocess.new = originalSpawn;
 }
@@ -88,6 +89,7 @@ assert(first.destroyed && !layoutManager.actors.size && !extension._sources.size
     'Off immediately clears actors, timers, and audio');
 assert(extension._indicatorLabel.text === '○' && !extension._countdownId,
     'Terminal off also updates the indicator');
+assert(extension._indicatorLabel.get_style().includes('color: #3377cc;'), 'Terminal off applies offColor');
 settings.set_boolean('active', true);
 spin(950);
 assert(extension._players.size === 2, 'Still image uses both global tracks');
@@ -96,6 +98,7 @@ sessionMode.emit('updated');
 assert(!layoutManager.actors.size && !extension._sources.size && !extension._players.size, 'Lock cleanup');
 assert(extension._indicatorLabel.text === '–' && !extension._countdownId,
     'Paused session has no stale countdown');
+assert(extension._indicatorLabel.get_style().includes('color: #ff5500;'), 'Paused mode is still on and uses onColor');
 sessionMode.isLocked = false;
 const fullAnimationEvents = layoutManager.events.length;
 sessionMode.emit('updated');

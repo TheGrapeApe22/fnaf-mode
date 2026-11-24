@@ -39,10 +39,12 @@ Click the indicator to toggle mode; it uses the same command and configured
 activation volume as the terminal. Disabling the whole extension removes the
 indicator.
 
-Set `panel.textColor` in `config.json` to color all indicator text, for example
-`"panel": {"textColor": "#ff5500"}`. Three- and six-digit hex colors are supported;
-the fallback color comes from `default.json`. Config edits are picked up on the
-next toggle or event.
+Set `panel.onColor` and `panel.offColor` in `config.json` to color the indicator
+based on mode status, for example `"panel": {"onColor": "#ff5500", "offColor": "#666666"}`.
+`onColor` applies to the countdown, active-event circle, and paused state while
+mode is on; `offColor` applies to the off circle. Three- and six-digit hex colors
+are supported. Either omitted color inherits from `default.json`. Config edits
+are picked up on the next toggle or event.
 
 ## Install
 
@@ -241,7 +243,7 @@ For example, this entire `config.json` changes only the cooldown and panel color
 ```json
 {
   "timing": {"intervalMinSeconds": 10, "intervalMaxSeconds": 20},
-  "panel": {"textColor": "#ff5500"}
+  "panel": {"onColor": "#ff5500", "offColor": "#666666"}
 }
 ```
 
@@ -267,7 +269,7 @@ The file has five sections: `timing`, `visuals`, `audio`, `panel`, and `assets`.
 | `audio.systemVolumePercent` | System output volume set once by on/toggle-on (0–100) |
 | `audio.fadeInSeconds`, `fadeOutSeconds` | Audio fades |
 | `assets.directory` | Empty string for default media root, or an absolute path / `~/...` |
-| `panel.textColor` | Top-bar circle/countdown color (`#RGB` or `#RRGGBB`) |
+| `panel.onColor`, `offColor` | Top-bar text color when mode is on/off (`#RGB` or `#RRGGBB`) |
 
 Repeated dark flicker bursts continue throughout the image phase. Reduce the gap
 settings for more frequent flickers; increase the burst settings for longer ones.
